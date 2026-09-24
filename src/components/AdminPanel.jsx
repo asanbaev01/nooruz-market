@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import AnalyticsDashboard from './AnalyticsDashboard';
 import {
   FiX, FiPackage, FiShoppingBag, FiUsers, FiBarChart2, FiTag,
   FiPlus, FiEdit2, FiTrash2, FiSearch, FiTrendingUp, FiDollarSign,
   FiCheckCircle, FiXCircle, FiClock, FiTruck, FiChevronRight,
-  FiSave, FiAlertCircle, FiActivity, FiZap, FiStar,
+  FiSave, FiAlertCircle, FiActivity, FiZap, FiStar, FiUpload,
 } from 'react-icons/fi';
 import { useApp } from '../context/AppContext';
 import { useOrder } from '../context/OrderContext';
@@ -26,6 +27,31 @@ const getCategoryId = (category) => {
     return category._id || category.id || '';
   }
   return category;
+};
+
+/* ====== ФОТО ЖҮКТӨӨ ФУНКЦИЯЛАРЫ ====== */
+const fileToBase64 = (file) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = (error) => reject(error);
+  });
+};
+
+const validateImage = (file, maxSizeMB = 2) => {
+  if (!file) return { valid: false, error: 'Файл тандалган жок' };
+
+  if (!file.type.startsWith('image/')) {
+    return { valid: false, error: 'Бул файл сүрөт эмес' };
+  }
+
+  const maxSize = maxSizeMB * 1024 * 1024;
+  if (file.size > maxSize) {
+    return { valid: false, error: `Файл өтө чоң (макс: ${maxSizeMB}MB)` };
+  }
+
+  return { valid: true };
 };
 
 const TABS = [
@@ -560,6 +586,22 @@ const AdminPanel = ({ isOpen, onClose }) => {
           animation: pulseDot 2s ease-in-out infinite;
           opacity: .5;
         }
+
+        /* ============================================================
+           FILE UPLOAD
+           ============================================================ */
+        .file-upload-label {
+          transition: all .4s cubic-bezier(.34,1.56,.64,1);
+        }
+        .file-upload-label:hover {
+          transform: translateY(-2px);
+          border-color: #10B981 !important;
+          background: rgba(16,185,129,.15) !important;
+          box-shadow: 0 8px 20px -8px rgba(16,185,129,.4);
+        }
+        .file-upload-label:active {
+          transform: scale(.98);
+        }
       `}</style>
 
       <div className="admin-overlay fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
@@ -569,7 +611,6 @@ const AdminPanel = ({ isOpen, onClose }) => {
         >
           {/* ====== HEADER ====== */}
           <div className="bg-gradient-to-r from-white via-emerald-50/30 to-white border-b border-gray-100 px-6 py-4 flex justify-between items-center flex-shrink-0 relative overflow-hidden">
-            {/* Background decoration */}
             <div className="absolute -top-10 -right-10 w-40 h-40 bg-emerald-200/20 rounded-full blur-3xl" />
             <div className="absolute -bottom-10 left-1/3 w-32 h-32 bg-blue-200/20 rounded-full blur-3xl" />
 
@@ -599,7 +640,6 @@ const AdminPanel = ({ isOpen, onClose }) => {
 
             {/* SIDEBAR */}
             <aside className="w-60 bg-gradient-to-b from-white via-emerald-50/20 to-white border-r border-gray-100 flex-shrink-0 py-5 relative overflow-hidden">
-              {/* Sidebar decoration */}
               <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-400 via-teal-500 to-emerald-400 animate-pulse" />
 
               <div className="px-4 mb-3">
@@ -631,7 +671,6 @@ const AdminPanel = ({ isOpen, onClose }) => {
                 );
               })}
 
-              {/* Sidebar footer */}
               <div className="absolute bottom-4 left-4 right-4">
                 <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-3 text-white shadow-lg">
                   <div className="flex items-center gap-2 mb-1">
@@ -753,6 +792,20 @@ const AdminPanel = ({ isOpen, onClose }) => {
                       );
                     })}
                   </div>
+
+                  {/* ✅ АНАЛИТИКА */}
+                  <div className="stagger-5">
+                    <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                      <FiTrendingUp className="text-emerald-500" />
+                      Аналитика
+                    </h2>
+                    <AnalyticsDashboard
+                      orders={orders}
+                      products={products}
+                      users={users}
+                    />
+                  </div>
+
                 </div>
               )}
 
@@ -1160,7 +1213,7 @@ const StatCard = ({ icon: Icon, label, value, suffix, color, delay = 0 }) => (
 );
 
 /* ============================================================
-   PRODUCT FORM MODAL
+   PRODUCT FORM MODAL (ФОТО ЖҮКТӨӨ КОШУЛГАН)
    ============================================================ */
 const ProductFormModal = ({ mode, initialData, onClose, onSave, categories }) => {
   const [form, setForm] = useState({
@@ -1180,10 +1233,33 @@ const ProductFormModal = ({ mode, initialData, onClose, onSave, categories }) =>
     badgeText: initialData.badgeText || '',
   });
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setForm((p) => ({ ...p, [name]: type === 'checkbox' ? checked : value }));
+  };
+
+  /* ====== ФАЙЛ ЖҮКТӨӨ ====== */
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const validation = validateImage(file, 2);
+    if (!validation.valid) {
+      alert(validation.error);
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const base64 = await fileToBase64(file);
+      setForm((p) => ({ ...p, image: base64 }));
+    } catch (err) {
+      alert('Сүрөт жүктөө катасы');
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -1283,14 +1359,69 @@ const ProductFormModal = ({ mode, initialData, onClose, onSave, categories }) =>
               />
             </div>
 
+            {/* ====== ✅ СҮРӨТ ЖҮКТӨӨ ====== */}
             <div className="col-span-2">
-              <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Сүрөт URL</label>
-              <input
-                type="text" name="image" value={form.image} onChange={handleChange}
-                className="admin-input w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 outline-none text-sm"
-                placeholder="https://..."
-              />
+              <label className="text-xs font-semibold text-gray-600 mb-1.5 block">
+                Сүрөт
+              </label>
+
+              {/* Preview */}
+              {form.image && (
+                <div className="relative mb-3 w-full h-48 rounded-xl overflow-hidden border-2 border-emerald-200 shadow-md">
+                  <img
+                    src={form.image}
+                    alt="Preview"
+                    className="w-full h-full object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, image: '' })}
+                    className="absolute top-2 right-2 w-9 h-9 rounded-full bg-red-500 text-white flex items-center justify-center shadow-lg hover:scale-110 active:scale-95 transition-all"
+                  >
+                    <FiX className="text-base" />
+                  </button>
+                </div>
+              )}
+
+              {/* File Upload */}
+              <label
+                className={`file-upload-label flex items-center justify-center gap-2 px-4 py-4 rounded-xl border-2 border-dashed border-emerald-300 bg-emerald-50/50 text-emerald-700 font-bold text-sm cursor-pointer transition-all ${
+                  uploading ? 'opacity-50 cursor-wait' : ''
+                }`}
+              >
+                {uploading ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
+                    Жүктөлүүдө...
+                  </>
+                ) : (
+                  <>
+                    <FiUpload className="text-lg" />
+                    📷 Файлдан жүктөө
+                  </>
+                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleFileUpload}
+                  disabled={uploading}
+                />
+              </label>
+
+              {/* URL Input */}
+              <div className="mt-3">
+                <p className="text-[11px] text-gray-400 mb-1.5 ml-1">
+                  Же шилтеме жазыңыз:
+                </p>
+                <input
+                  type="text" name="image" value={form.image} onChange={handleChange}
+                  className="admin-input w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 outline-none text-sm"
+                  placeholder="https://..."
+                />
+              </div>
             </div>
+            {/* ============================================ */}
 
             <div>
               <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Категория</label>

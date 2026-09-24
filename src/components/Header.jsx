@@ -6,11 +6,15 @@ import {
   FiShoppingCart,
   FiUser,
   FiSearch,
-  FiMenu,
-  FiX,
   FiFeather,
-  FiBell,
   FiShield,
+  FiGrid,
+  FiInfo,
+  FiTruck,
+  FiGift,
+  FiGlobe,
+  FiSun,
+  FiMoon,
 } from 'react-icons/fi';
 import { useApp } from '../context/AppContext';
 import { useTheme } from '../context/ThemeContext';
@@ -24,8 +28,6 @@ const Header = ({ onCartClick, onAuthClick, onProfileClick, onAdminClick, onSear
   const [mobileMenu, setMobileMenu] = useState(false);
   const [search, setSearch] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
-  const [logoHover, setLogoHover] = useState(false);
-  const [hoveredLink, setHoveredLink] = useState(null);
   const [cartBounce, setCartBounce] = useState(false);
   const [prevCartCount, setPrevCartCount] = useState(cartCount);
   const headerRef = useRef(null);
@@ -51,24 +53,27 @@ const Header = ({ onCartClick, onAuthClick, onProfileClick, onAdminClick, onSear
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  useEffect(() => {
+    if (mobileMenu) document.body.style.overflow = 'hidden';
+    else document.body.style.overflow = '';
+    return () => { document.body.style.overflow = ''; };
+  }, [mobileMenu]);
+
   const handleSearchChange = (e) => {
     setSearch(e.target.value);
     onSearch(e.target.value);
   };
 
   const handleUserClick = () => {
-    if (isLoggedIn) {
-      onProfileClick?.();
-    } else {
-      onAuthClick?.();
-    }
+    if (isLoggedIn) onProfileClick?.();
+    else onAuthClick?.();
   };
 
   const navLinks = [
-    { name: t('nav.products'), href: '#products-section', icon: '🥗' },
-    { name: t('nav.about'), href: '#about-section', icon: '✨' },
-    { name: t('nav.delivery'), href: '#delivery-section', icon: '🚚' },
-    { name: t('nav.promo'), href: '#promo-section', icon: '🎁' },
+    { name: t('nav.products'), href: '#products-section', icon: FiGrid },
+    { name: t('nav.about'), href: '#about-section', icon: FiInfo },
+    { name: t('nav.delivery'), href: '#delivery-section', icon: FiTruck },
+    { name: t('nav.promo'), href: '#promo-section', icon: FiGift },
   ];
 
   const scrollTo = (href) => {
@@ -79,123 +84,93 @@ const Header = ({ onCartClick, onAuthClick, onProfileClick, onAdminClick, onSear
 
   return (
     <>
+      {/* ========== KEYFRAMES (тек анимация үчүн) ========== */}
       <style>{`
-        @keyframes logoFloat {
-          0%, 100% { transform: translateY(0) rotate(0deg); }
-          50% { transform: translateY(-3px) rotate(-3deg); }
+        @keyframes headerTopShine {
+          0% { background-position: 0% 50%; }
+          100% { background-position: 200% 50%; }
         }
-        @keyframes logoSpin {
-          0% { transform: rotate(0deg) scale(1); }
-          50% { transform: rotate(180deg) scale(1.15); }
-          100% { transform: rotate(360deg) scale(1); }
+        @keyframes headerGlow {
+          0%, 100% { box-shadow: 0 4px 24px -6px rgba(16,185,129,0.2); }
+          50% { box-shadow: 0 4px 36px -6px rgba(16,185,129,0.4); }
         }
-        .logo-icon {
-          animation: logoFloat 3s ease-in-out infinite;
-          transition: color .4s ease;
+        @keyframes logoShine {
+          0%, 60% { transform: translateX(-150%) skewX(-20deg); }
+          100% { transform: translateX(250%) skewX(-20deg); }
         }
-        .logo-icon:hover {
-          animation: logoSpin .8s cubic-bezier(.34,1.56,.64,1);
-          color: #22E8B0;
-        }
-        .nav-link {
-          position: relative;
-          transition: color .3s ease, transform .3s cubic-bezier(.34,1.56,.64,1);
-        }
-        .nav-link::after {
-          content: '';
-          position: absolute;
-          left: 0; right: 0; bottom: -6px;
-          height: 2px;
-          background: linear-gradient(90deg, #7C6CFF, #22E8B0);
-          border-radius: 2px;
-          transform: scaleX(0);
-          transform-origin: center;
-          transition: transform .4s cubic-bezier(.34,1.56,.64,1);
-        }
-        .nav-link:hover::after { transform: scaleX(1); }
-        @keyframes searchGlow {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(124,108,255,.35); }
-          50% { box-shadow: 0 0 0 8px rgba(124,108,255,0); }
-        }
-        .search-input { transition: all .4s cubic-bezier(.34,1.56,.64,1); }
-        .search-input:focus {
-          animation: searchGlow 2s ease-out infinite;
-          transform: scale(1.03);
-        }
-        .search-icon { transition: all .4s cubic-bezier(.34,1.56,.64,1); }
-        .search-wrap:focus-within .search-icon {
-          transform: rotate(-15deg) scale(1.15);
-          color: #7C6CFF;
-        }
-        @keyframes cartBounce {
-          0% { transform: scale(1) rotate(0); }
-          25% { transform: scale(1.35) rotate(-12deg); }
-          50% { transform: scale(.9) rotate(8deg); }
-          75% { transform: scale(1.15) rotate(-4deg); }
-          100% { transform: scale(1) rotate(0); }
-        }
-        .cart-bounce { animation: cartBounce .6s cubic-bezier(.34,1.56,.64,1); }
-        @keyframes cartIdle {
-          0%, 100% { transform: rotate(-3deg); }
-          50% { transform: rotate(3deg); }
-        }
-        .cart-icon:hover { animation: cartIdle .5s ease-in-out infinite; }
-        @keyframes badgePop {
-          0% { transform: scale(.5); }
-          50% { transform: scale(1.3); }
-          100% { transform: scale(1); }
+        @keyframes dotPulse {
+          0%, 100% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.5); opacity: .5; }
         }
         @keyframes badgePulse {
           0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.1); }
+          50% { transform: scale(1.15); }
         }
-        .cart-badge { animation: badgePulse 2s ease-in-out infinite; }
-        .cart-badge.pop {
-          animation: badgePop .5s cubic-bezier(.34,1.56,.64,1), badgePulse 2s ease-in-out infinite .5s;
+        @keyframes badgePop {
+          0% { transform: scale(.5); }
+          50% { transform: scale(1.4); }
+          100% { transform: scale(1); }
         }
-        .icon-btn {
-          transition: all .35s cubic-bezier(.34,1.56,.64,1);
-          position: relative;
+        @keyframes cartBounce {
+          0% { transform: scale(1) rotate(0); }
+          25% { transform: scale(1.4) rotate(-15deg); }
+          50% { transform: scale(.9) rotate(10deg); }
+          75% { transform: scale(1.2) rotate(-5deg); }
+          100% { transform: scale(1) rotate(0); }
         }
-        .icon-btn::before {
+        @keyframes onlinePulse {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(16,185,129,0.6); }
+          50% { box-shadow: 0 0 0 5px rgba(16,185,129,0); }
+        }
+        @keyframes adminShine {
+          0%, 70% { transform: translateX(-150%) skewX(-20deg); }
+          100% { transform: translateX(250%) skewX(-20deg); }
+        }
+        @keyframes mobileMenuIn {
+          from { opacity: 0; transform: translateY(-20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes mobileItemIn {
+          from { opacity: 0; transform: translateX(-30px); }
+          to { opacity: 1; transform: translateX(0); }
+        }
+
+        /* Утилита-класстар (Tailwind жетпеген жерлерде) */
+        .header-top-shine {
+          background-size: 200% 100%;
+          animation: headerTopShine 4s linear infinite;
+        }
+        .header-scrolled-glow {
+          animation: headerGlow 3.5s ease-in-out infinite;
+        }
+        .logo-shine::before {
           content: '';
           position: absolute;
           inset: 0;
-          border-radius: 50%;
-          background: rgba(124,108,255,.12);
-          transform: scale(0);
-          transition: transform .4s cubic-bezier(.34,1.56,.64,1);
-          z-index: 0;
+          background: linear-gradient(120deg, transparent 30%, rgba(255,255,255,0.5) 50%, transparent 70%);
+          transform: translateX(-150%) skewX(-20deg);
+          animation: logoShine 3.5s ease-in-out infinite;
         }
-        .icon-btn:hover::before { transform: scale(1.4); }
-        .icon-btn:hover svg { transform: scale(1.15) rotate(6deg); }
-        .icon-btn svg {
-          transition: all .35s cubic-bezier(.34,1.56,.64,1);
-          position: relative;
-          z-index: 1;
+        .dot-pulse { animation: dotPulse 2s ease-in-out infinite; }
+        .badge-pulse { animation: badgePulse 2s ease-in-out infinite; }
+        .badge-pop { animation: badgePop .5s cubic-bezier(.34,1.56,.64,1); }
+        .cart-bounce { animation: cartBounce .6s cubic-bezier(.34,1.56,.64,1); }
+        .online-dot-pulse { animation: onlinePulse 2s ease-in-out infinite; }
+        .admin-shine::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(120deg, transparent 30%, rgba(255,255,255,0.5) 50%, transparent 70%);
+          transform: translateX(-150%) skewX(-20deg);
+          animation: adminShine 3s ease-in-out infinite;
         }
-        @keyframes userNod {
-          0%, 100% { transform: rotate(0); }
-          25% { transform: rotate(-8deg); }
-          75% { transform: rotate(8deg); }
-        }
-        .user-btn:hover .user-icon { animation: userNod .6s ease-in-out; }
-        @keyframes adminPulse {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,.5); }
-          50% { box-shadow: 0 0 0 8px rgba(239,68,68,0); }
-        }
-        .admin-btn {
-          animation: adminPulse 2.5s ease-in-out infinite;
-          background: linear-gradient(135deg, #ef4444, #dc2626);
-          color: white !important;
-        }
-        .admin-btn:hover svg {
-          transform: scale(1.15) rotate(15deg) !important;
-        }
-        .burger-line {
-          transition: all .4s cubic-bezier(.34,1.56,.64,1);
-          transform-origin: center;
-        }
+        .mobile-menu-anim { animation: mobileMenuIn .4s cubic-bezier(.34,1.56,.64,1); }
+        .mobile-item-anim { animation: mobileItemIn .4s cubic-bezier(.34,1.56,.64,1) both; }
+
+        /* Search focus width */
+        .search-input:focus { width: 18rem !important; }
+
+        /* Burger open */
         .burger-open .burger-line:nth-child(1) {
           transform: translateY(7px) rotate(45deg);
         }
@@ -206,124 +181,103 @@ const Header = ({ onCartClick, onAuthClick, onProfileClick, onAdminClick, onSear
         .burger-open .burger-line:nth-child(3) {
           transform: translateY(-7px) rotate(-45deg);
         }
-        @keyframes slideDown {
-          from { opacity: 0; transform: translateY(-20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes mobileItemIn {
-          from { opacity: 0; transform: translateX(-30px); }
-          to { opacity: 1; transform: translateX(0); }
-        }
-        .mobile-menu { animation: slideDown .4s cubic-bezier(.34,1.56,.64,1); }
-        .mobile-menu .mobile-item {
-          animation: mobileItemIn .4s cubic-bezier(.34,1.56,.64,1) both;
-        }
-        @keyframes headerGlow {
-          0%, 100% { box-shadow: 0 4px 20px -4px rgba(124,108,255,.15); }
-          50% { box-shadow: 0 4px 30px -4px rgba(124,108,255,.3); }
-        }
-        .header-scrolled { animation: headerGlow 3s ease-in-out infinite; }
-        @keyframes shine {
-          0% { transform: translateX(-100%) skewX(-20deg); }
-          100% { transform: translateX(200%) skewX(-20deg); }
-        }
-        .shine-wrap { position: relative; overflow: hidden; }
-        .shine-wrap::after {
-          content: '';
-          position: absolute;
-          top: 0; left: 0; bottom: 0;
-          width: 40px;
-          background: linear-gradient(90deg, transparent, rgba(255,255,255,.4), transparent);
-          animation: shine 4s ease-in-out infinite;
-          pointer-events: none;
-        }
-        @keyframes onlinePulse {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(16,185,129,.6); }
-          50% { box-shadow: 0 0 0 5px rgba(16,185,129,0); }
-        }
-        .online-dot {
-          animation: onlinePulse 2s ease-in-out infinite;
-        }
-        .header-bg-light { background: rgba(255,255,255,0.9); }
-        .header-bg-light.scrolled { background: rgba(255,255,255,0.95); }
-        .header-bg-dark {
-          background: rgba(15,23,42,0.9);
-          border-color: rgba(51,65,85,0.5) !important;
-        }
-        .header-bg-dark.scrolled { background: rgba(15,23,42,0.95); }
-        .search-input { background: #F3F4F6; }
-        .dark .search-input {
-          background: #1E293B;
-          color: #E2E8F0;
-        }
-        .dark .search-input::placeholder { color: #64748B; }
-        .dark .mobile-menu {
-          background: #1E293B !important;
-          border-color: #334155 !important;
-        }
-        .dark .mobile-menu .mobile-item { color: #E2E8F0; }
-        .dark .mobile-menu .mobile-item:hover {
-          background: rgba(16,185,129,0.1);
-          color: #10B981;
-        }
-        .dark .nav-link { color: #94A3B8; }
-        .dark .nav-link:hover { color: #10B981; }
       `}</style>
 
       <header
         ref={headerRef}
-        className={`fixed top-0 left-0 right-0 z-50 border-b border-black/10 
-          transition-all duration-500 ${scrolled ? 'h-16 header-scrolled' : 'h-20'} 
-          ${isDark ? 'header-bg-dark' : 'header-bg-light'} 
-          ${scrolled ? 'scrolled' : ''}`}
-        style={{ backdropFilter: 'blur(16px)' }}
+        className={`
+          fixed top-0 left-0 right-0 z-50
+          transition-all duration-500 ease-out
+          backdrop-blur-xl backdrop-saturate-150
+          ${scrolled ? 'h-16 header-scrolled-glow' : 'h-20'}
+          ${isDark
+            ? 'bg-gradient-to-br from-slate-900/90 via-slate-900/80 to-emerald-950/30 border-b border-emerald-500/20'
+            : 'bg-gradient-to-br from-white/85 via-white/75 to-emerald-50/60 border-b border-emerald-500/10'
+          }
+        `}
       >
-        <div className="max-w-7xl mx-auto h-full px-6 flex justify-between items-center">
+        {/* Top shine bar */}
+        <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-emerald-500 via-emerald-700 via-emerald-500 to-transparent opacity-80 header-top-shine" />
 
-          {/* LOGO */}
+        <div className="max-w-7xl mx-auto h-full px-4 sm:px-6 flex justify-between items-center gap-4">
+
+          {/* ========== LOGO ========== */}
           <a
             href="#"
-            className="text-2xl font-bold text-primary flex items-center gap-2 
-              hover:scale-105 transition-transform duration-300 shine-wrap"
-            onMouseEnter={() => setLogoHover(true)}
-            onMouseLeave={() => setLogoHover(false)}
+            className="flex items-center gap-2.5 no-underline transition-transform duration-500 ease-out hover:scale-[1.03] group"
+            aria-label="Nooruz Market"
           >
-            <FiFeather className="text-3xl logo-icon" />
-            <span className="relative">
-              Nooruz Market
-              <span
-                className="absolute -bottom-1 left-0 h-[2px] bg-gradient-to-r from-primary to-green-400 
-                  transition-all duration-500"
-                style={{ width: logoHover ? '100%' : '0%' }}
-              />
-            </span>
+            {/* Icon box */}
+            <div className={`
+              relative w-11 h-11 rounded-xl overflow-hidden
+              bg-gradient-to-br from-emerald-500 to-emerald-700
+              flex items-center justify-center text-white
+              shadow-[0_4px_12px_-2px_rgba(16,185,129,0.5),inset_0_1px_0_rgba(255,255,255,0.3)]
+              transition-all duration-500 ease-out
+              group-hover:rotate-[-8deg] group-hover:scale-110
+              group-hover:shadow-[0_8px_24px_-2px_rgba(16,185,129,0.7),inset_0_1px_0_rgba(255,255,255,0.4)]
+              logo-shine
+            `}>
+              <FiFeather className="text-[22px] relative z-10 transition-transform duration-500 group-hover:rotate-[360deg]" />
+            </div>
+
+            {/* Text */}
+            <div className="flex items-center">
+              <span className={`
+                text-xl font-extrabold tracking-tight
+                bg-clip-text text-transparent
+                ${isDark
+                  ? 'bg-gradient-to-br from-white to-emerald-400'
+                  : 'bg-gradient-to-br from-slate-900 to-emerald-700'
+                }
+              `}>
+                Nooruz
+              </span>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 ml-1 dot-pulse" />
+            </div>
           </a>
 
-          {/* NAV */}
-          <nav className="hidden md:flex gap-8">
-            {navLinks.map((link, i) => (
-              <button
-                key={link.name}
-                onMouseEnter={() => setHoveredLink(i)}
-                onMouseLeave={() => setHoveredLink(null)}
-                onClick={() => scrollTo(link.href)}
-                className="nav-link text-base font-medium"
-                style={{
-                  transform: hoveredLink === i ? 'translateY(-2px)' : 'translateY(0)',
-                  animation: `mobileItemIn .5s cubic-bezier(.34,1.56,.64,1) ${i * 0.08}s both`,
-                  color: isDark ? undefined : '#4B5563',
-                }}
-              >
-                {link.name}
-              </button>
-            ))}
+          {/* ========== NAV ========== */}
+          <nav className="hidden md:flex gap-1 items-center">
+            {navLinks.map((link, i) => {
+              const Icon = link.icon;
+              return (
+                <button
+                  key={link.name}
+                  onClick={() => scrollTo(link.href)}
+                  className={`
+                    group relative px-3.5 py-2 text-sm font-semibold
+                    rounded-lg transition-all duration-300 ease-out
+                    bg-transparent border-0 cursor-pointer overflow-hidden
+                    ${isDark
+                      ? 'text-slate-400 hover:text-emerald-400'
+                      : 'text-slate-500 hover:text-emerald-700'
+                    }
+                    hover:-translate-y-0.5
+                  `}
+                  style={{ animation: `mobileItemIn .5s cubic-bezier(.34,1.56,.64,1) ${i * 0.08}s both` }}
+                >
+                  {/* Hover bg */}
+                  <span className="absolute inset-0 rounded-lg bg-gradient-to-br from-emerald-500/10 to-emerald-700/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+                  {/* Text */}
+                  <span className="relative z-10 flex items-center gap-1.5">
+                    <Icon className="text-sm transition-transform duration-300 group-hover:scale-125 group-hover:-rotate-12" />
+                    {link.name}
+                  </span>
+
+                  {/* Underline */}
+                  <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-3/5 h-0.5 bg-gradient-to-r from-emerald-500 to-emerald-700 rounded-full scale-x-0 group-hover:scale-x-100 transition-transform duration-400 ease-out" />
+                </button>
+              );
+            })}
           </nav>
 
-          {/* ACTIONS */}
-          <div className="flex items-center gap-2">
+          {/* ========== ACTIONS ========== */}
+          <div className="flex items-center gap-1.5">
 
             {/* Search */}
-            <div className="relative hidden sm:block search-wrap">
+            <div className="relative hidden sm:block group">
               <input
                 type="text"
                 value={search}
@@ -331,42 +285,81 @@ const Header = ({ onCartClick, onAuthClick, onProfileClick, onAdminClick, onSear
                 onFocus={() => setSearchFocused(true)}
                 onBlur={() => setSearchFocused(false)}
                 placeholder={t('search.placeholder')}
-                className="search-input border-none rounded-full px-5 py-2.5 pl-10 
-                  focus:ring-2 focus:ring-primary w-48 lg:w-64 text-sm outline-none"
-                style={{ width: searchFocused ? '20rem' : '' }}
+                className={`
+                  search-input
+                  w-48 focus:w-72
+                  px-4 py-2.5 pl-10
+                  text-[13px] rounded-xl outline-none
+                  border border-transparent
+                  transition-all duration-400 ease-out
+                  ${isDark
+                    ? 'bg-slate-800/70 text-slate-200 placeholder:text-slate-500 focus:bg-slate-800 focus:border-emerald-500'
+                    : 'bg-slate-100/70 text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-emerald-500'
+                  }
+                  focus:shadow-[0_0_0_4px_rgba(16,185,129,0.12),0_4px_16px_-4px_rgba(16,185,129,0.3)]
+                `}
               />
-              <FiSearch className="absolute left-3 top-3 text-gray-400 text-lg search-icon pointer-events-none" />
+              <FiSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[15px] text-slate-400 pointer-events-none transition-all duration-300 group-focus-within:text-emerald-500 group-focus-within:-rotate-12 group-focus-within:scale-110" />
             </div>
 
             <LanguageSwitcher />
             <ThemeToggle />
 
-            {/* АДМИН БАСКЫЧЫ */}
+            {/* Admin */}
             {isAdmin && (
               <button
                 onClick={onAdminClick}
-                className="admin-btn icon-btn relative p-2 rounded-full shadow-lg hidden sm:flex items-center justify-center"
+                className={`
+                  relative hidden sm:flex w-10 h-10 rounded-xl
+                  items-center justify-center text-white
+                  bg-gradient-to-br from-emerald-500 to-emerald-700
+                  border-0 cursor-pointer overflow-hidden
+                  shadow-[0_4px_16px_-4px_rgba(16,185,129,0.5),inset_0_1px_0_rgba(255,255,255,0.3)]
+                  transition-all duration-400 ease-out
+                  hover:-translate-y-0.5 hover:scale-105
+                  hover:shadow-[0_8px_24px_-4px_rgba(16,185,129,0.7),inset_0_1px_0_rgba(255,255,255,0.4)]
+                  admin-shine
+                `}
                 aria-label="Админ панель"
                 title="Админ панель"
               >
-                <FiShield className="text-xl" />
+                <FiShield className="text-xl relative z-10 transition-transform duration-400 hover:rotate-[15deg] hover:scale-110" />
               </button>
             )}
 
             {/* Cart */}
             <button
               onClick={onCartClick}
-              className={`icon-btn relative p-2 text-primary ${cartBounce ? 'cart-bounce' : ''}`}
+              className={`
+                group relative w-10 h-10 rounded-xl
+                flex items-center justify-center
+                bg-transparent border-0 cursor-pointer
+                overflow-hidden
+                transition-all duration-400 ease-out
+                hover:-translate-y-0.5
+                hover:shadow-[0_6px_20px_-6px_rgba(16,185,129,0.4)]
+                ${isDark ? 'text-emerald-400' : 'text-emerald-700'}
+                ${cartBounce ? 'cart-bounce' : ''}
+              `}
               aria-label={t('header.cart')}
             >
-              <FiShoppingCart className="text-2xl cart-icon" />
+              {/* Hover bg */}
+              <span className="absolute inset-0 rounded-xl bg-gradient-to-br from-emerald-500/10 to-emerald-700/5 scale-0 group-hover:scale-100 transition-transform duration-400 ease-out" />
+
+              <FiShoppingCart className="text-xl relative z-10 transition-transform duration-400 group-hover:scale-115" />
+
               {cartCount > 0 && (
-                <span
-                  className={`cart-badge ${cartBounce ? 'pop' : ''} 
-                    absolute -top-1 -right-1 bg-red-600 text-white text-xs w-5 h-5 
-                    rounded-full flex items-center justify-center font-bold`}
-                >
-                  {cartCount}
+                <span className={`
+                  absolute top-1 right-1 min-w-[18px] h-[18px] px-1
+                  rounded-full text-[10px] font-extrabold text-white
+                  flex items-center justify-center
+                  bg-gradient-to-br from-emerald-500 to-emerald-700
+                  border-2 ${isDark ? 'border-slate-900' : 'border-white'}
+                  shadow-[0_2px_8px_rgba(16,185,129,0.5)]
+                  badge-pulse
+                  ${cartBounce ? 'badge-pop' : ''}
+                `}>
+                  {cartCount > 99 ? '99+' : cartCount}
                 </span>
               )}
             </button>
@@ -374,135 +367,206 @@ const Header = ({ onCartClick, onAuthClick, onProfileClick, onAdminClick, onSear
             {/* User */}
             <button
               onClick={handleUserClick}
-              className="icon-btn user-btn relative p-2 text-primary"
+              className={`
+                group relative w-10 h-10 rounded-xl
+                flex items-center justify-center
+                bg-transparent border-0 cursor-pointer
+                overflow-hidden
+                transition-all duration-400 ease-out
+                hover:-translate-y-0.5
+                hover:shadow-[0_6px_20px_-6px_rgba(16,185,129,0.4)]
+                ${isDark ? 'text-emerald-400' : 'text-emerald-700'}
+              `}
               aria-label={isLoggedIn ? t('header.profile') : t('header.login')}
               title={isLoggedIn ? currentUser?.name : t('header.login')}
             >
+              <span className="absolute inset-0 rounded-xl bg-gradient-to-br from-emerald-500/10 to-emerald-700/5 scale-0 group-hover:scale-100 transition-transform duration-400 ease-out" />
+
               {isLoggedIn ? (
                 <>
                   {currentUser?.avatar ? (
                     <img
                       src={currentUser.avatar}
                       alt={currentUser.name}
-                      className="w-7 h-7 rounded-full object-cover border-2 border-emerald-500"
+                      className="relative z-10 w-8 h-8 rounded-full object-cover border-2 border-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.15)] transition-all duration-400 group-hover:shadow-[0_0_0_5px_rgba(16,185,129,0.25)] group-hover:scale-108"
                     />
                   ) : (
-                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 text-white flex items-center justify-center text-sm font-bold">
+                    <div className="relative z-10 w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-700 text-white flex items-center justify-center text-[13px] font-extrabold shadow-[0_0_0_3px_rgba(16,185,129,0.15)] transition-all duration-400 group-hover:shadow-[0_0_0_5px_rgba(16,185,129,0.25)] group-hover:scale-108">
                       {currentUser?.name?.charAt(0)?.toUpperCase() || 'U'}
                     </div>
                   )}
-                  <span className="online-dot absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white" />
+                  <span className={`absolute bottom-1 right-1 z-20 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 ${isDark ? 'border-slate-900' : 'border-white'} online-dot-pulse`} />
                 </>
               ) : (
-                <FiUser className="text-2xl user-icon" />
+                <FiUser className="text-xl relative z-10 transition-transform duration-400 group-hover:scale-115" />
               )}
             </button>
 
-            {/* ✅ BELL — NotificationBell компоненти */}
+            {/* Bell */}
             {isLoggedIn && <NotificationBell />}
 
             {/* Burger */}
             <button
-              className={`md:hidden p-2 text-primary icon-btn ${mobileMenu ? 'burger-open' : ''}`}
+              className={`
+                md:hidden w-10 h-10 rounded-xl
+                flex flex-col items-center justify-center gap-1.5
+                bg-transparent border-0 cursor-pointer
+                ${isDark ? 'text-emerald-400' : 'text-emerald-700'}
+                ${mobileMenu ? 'burger-open' : ''}
+              `}
               onClick={() => setMobileMenu(!mobileMenu)}
               aria-label="Меню"
             >
-              <div className="flex flex-col gap-1.5 w-6">
-                <span className="burger-line w-full h-0.5 bg-primary rounded-full" />
-                <span className="burger-line w-full h-0.5 bg-primary rounded-full" />
-                <span className="burger-line w-full h-0.5 bg-primary rounded-full" />
-              </div>
+              <span className={`burger-line w-5 h-0.5 rounded-full transition-all duration-400 ${isDark ? 'bg-emerald-400' : 'bg-emerald-700'}`} />
+              <span className={`burger-line w-5 h-0.5 rounded-full transition-all duration-400 ${isDark ? 'bg-emerald-400' : 'bg-emerald-700'}`} />
+              <span className={`burger-line w-5 h-0.5 rounded-full transition-all duration-400 ${isDark ? 'bg-emerald-400' : 'bg-emerald-700'}`} />
             </button>
           </div>
         </div>
 
-        {/* MOBILE MENU */}
+        {/* ========== MOBILE MENU ========== */}
         {mobileMenu && (
-          <div className="mobile-menu md:hidden border-t border-gray-100 px-6 py-4 space-y-3 shadow-lg">
-            {navLinks.map((link, i) => (
-              <button
-                key={link.name}
-                onClick={() => scrollTo(link.href)}
-                className="mobile-item block w-full text-left py-3 px-3 
-                  rounded-lg font-medium transition-all duration-300 flex items-center gap-3"
-                style={{
-                  animationDelay: `${i * 0.08}s`,
-                  color: isDark ? undefined : '#374151',
-                }}
-              >
-                <span className="text-xl">{link.icon}</span>
-                {link.name}
-              </button>
-            ))}
+          <div className={`
+            md:hidden px-4 py-4 space-y-2
+            backdrop-blur-xl border-t shadow-2xl
+            max-h-[calc(100vh-80px)] overflow-y-auto
+            mobile-menu-anim
+            ${isDark
+              ? 'bg-slate-900/98 border-emerald-500/25'
+              : 'bg-white/98 border-emerald-500/15'
+            }
+          `}>
+            {navLinks.map((link, i) => {
+              const Icon = link.icon;
+              return (
+                <button
+                  key={link.name}
+                  onClick={() => scrollTo(link.href)}
+                  className={`
+                    mobile-item-anim
+                    flex items-center gap-3 w-full text-left
+                    px-4 py-3.5 rounded-xl
+                    text-[15px] font-semibold
+                    bg-transparent border-0 cursor-pointer
+                    transition-all duration-350 ease-out
+                    ${isDark
+                      ? 'text-slate-300 hover:text-emerald-400 hover:bg-emerald-500/10 hover:translate-x-1.5'
+                      : 'text-slate-700 hover:text-emerald-700 hover:bg-emerald-500/8 hover:translate-x-1.5'
+                    }
+                  `}
+                  style={{ animationDelay: `${i * 0.06}s` }}
+                >
+                  <Icon className="text-lg text-emerald-500 flex-shrink-0" />
+                  {link.name}
+                </button>
+              );
+            })}
 
-            {/* Admin (mobile) */}
+            {/* Admin mobile */}
             {isAdmin && (
               <button
                 onClick={() => {
                   onAdminClick?.();
                   setMobileMenu(false);
                 }}
-                className="mobile-item w-full text-left py-3 px-3 text-white bg-gradient-to-r from-red-500 to-red-600 
-                  rounded-lg font-medium flex items-center gap-3 shadow-md"
-                style={{ animationDelay: '0.2s' }}
+                className={`
+                  mobile-item-anim
+                  flex items-center justify-center gap-3 w-full
+                  px-4 py-3.5 rounded-xl
+                  text-white font-semibold
+                  bg-gradient-to-r from-emerald-500 to-emerald-700
+                  border-0 cursor-pointer
+                  shadow-[0_4px_16px_-4px_rgba(16,185,129,0.5)]
+                  transition-all duration-350 ease-out
+                  hover:-translate-y-0.5
+                  hover:shadow-[0_8px_24px_-4px_rgba(16,185,129,0.7)]
+                `}
+                style={{ animationDelay: '0.25s' }}
               >
-                <FiShield className="text-xl" />
+                <FiShield className="text-lg" />
                 Админ панель
               </button>
             )}
 
+            {/* Lang */}
             <div
-              className="mobile-item flex items-center justify-between py-3 px-3 rounded-lg"
-              style={{ animationDelay: '0.28s' }}
+              className={`
+                mobile-item-anim
+                flex items-center justify-between
+                px-4 py-3.5 rounded-xl
+                ${isDark ? 'text-slate-300' : 'text-slate-700'}
+              `}
+              style={{ animationDelay: '0.3s' }}
             >
-              <span
-                className="flex items-center gap-3 font-medium"
-                style={{ color: isDark ? '#E2E8F0' : '#374151' }}
-              >
-                🌐 Тил / Язык / Lang
+              <span className="flex items-center gap-3 font-semibold text-[15px]">
+                <FiGlobe className="text-lg text-emerald-500" />
+                Тил / Язык
               </span>
               <LanguageSwitcher />
             </div>
 
+            {/* Theme */}
             <div
-              className="mobile-item flex items-center justify-between py-3 px-3 rounded-lg"
+              className={`
+                mobile-item-anim
+                flex items-center justify-between
+                px-4 py-3.5 rounded-xl
+                ${isDark ? 'text-slate-300' : 'text-slate-700'}
+              `}
               style={{ animationDelay: '0.36s' }}
             >
-              <span
-                className="flex items-center gap-3 font-medium"
-                style={{ color: isDark ? '#E2E8F0' : '#374151' }}
-              >
-                {isDark ? '🌙' : '☀️'}
+              <span className="flex items-center gap-3 font-semibold text-[15px]">
+                {isDark ? <FiMoon className="text-lg text-emerald-500" /> : <FiSun className="text-lg text-emerald-500" />}
                 {isDark ? 'Караңгы режим' : 'Жарык режим'}
               </span>
               <ThemeToggle />
             </div>
 
+            {/* Profile */}
             {isLoggedIn && (
               <button
                 onClick={() => {
                   onProfileClick?.();
                   setMobileMenu(false);
                 }}
-                className="mobile-item w-full text-left py-3 px-3 text-primary bg-primary/5 
-                  rounded-lg font-medium flex items-center gap-3"
-                style={{ animationDelay: '0.44s' }}
+                className={`
+                  mobile-item-anim
+                  flex items-center gap-3 w-full text-left
+                  px-4 py-3.5 rounded-xl
+                  font-semibold text-[15px]
+                  bg-gradient-to-br from-emerald-500/10 to-emerald-700/5
+                  border-0 cursor-pointer
+                  text-emerald-700
+                  transition-all duration-350
+                  hover:translate-x-1.5
+                `}
+                style={{ animationDelay: '0.42s' }}
               >
-                <FiUser className="text-xl" />
+                <FiUser className="text-lg text-emerald-500" />
                 {t('header.myProfile')}
               </button>
             )}
 
-            <div className="mobile-item relative sm:hidden pt-2" style={{ animationDelay: '0.52s' }}>
+            {/* Search mobile */}
+            <div className="relative sm:hidden pt-2 mobile-item-anim" style={{ animationDelay: '0.48s' }}>
+              <FiSearch className="absolute left-4 top-1/2 translate-y-1.5 text-slate-400 text-base pointer-events-none" />
               <input
                 type="text"
                 value={search}
                 onChange={handleSearchChange}
                 placeholder={t('search.placeholder')}
-                className="search-input w-full border-none rounded-full px-5 py-2.5 pl-10 
-                  focus:ring-2 focus:ring-primary text-sm outline-none"
+                className={`
+                  w-full px-4 py-3 pl-11
+                  text-sm rounded-xl outline-none
+                  border border-transparent
+                  transition-all duration-400
+                  ${isDark
+                    ? 'bg-slate-800 text-slate-200 placeholder:text-slate-500 focus:border-emerald-500'
+                    : 'bg-slate-100 text-slate-900 placeholder:text-slate-400 focus:border-emerald-500 focus:bg-white'
+                  }
+                  focus:shadow-[0_0_0_4px_rgba(16,185,129,0.12)]
+                `}
               />
-              <FiSearch className="absolute left-3 top-[18px] text-gray-400 text-lg" />
             </div>
           </div>
         )}

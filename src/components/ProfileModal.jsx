@@ -3,21 +3,25 @@ import {
   FiX, FiUser, FiLogOut, FiShoppingBag, FiHeart, FiUser as FiUserIcon,
   FiMail, FiPhone, FiMapPin, FiPackage, FiClock, FiCheckCircle,
   FiTruck, FiXCircle, FiChevronRight, FiTrash2, FiAward, FiGift,
-  FiTrendingUp, FiTrendingDown, FiHome,
+  FiTrendingUp, FiTrendingDown, FiUsers, FiCopy, FiCheck,
+  FiShare2, FiUserPlus, FiDollarSign, FiSend, FiCreditCard,   // ✅ FiCreditCard КОШУЛДУ
 } from 'react-icons/fi';
 import { useApp } from '../context/AppContext';
 import { useOrder } from '../context/OrderContext';
 import { useLoyalty, LOYALTY_RULES } from '../context/LoyaltyContext';
+import { useReferral, REFERRAL_RULES } from '../context/ReferralContext';
+import { useCashback, CASHBACK_RULES } from '../context/CashbackContext';  // ✅ ЖАҢЫ
 
-/* ====== TAB АТТАРЫ ====== */
+/* ====== TABS (КЭШБЭК КОШУЛДУ) ====== */
 const TABS = [
   { id: 'orders', label: 'Буйрутмалар', icon: FiPackage },
   { id: 'favorites', label: 'Тандалмалар', icon: FiHeart },
   { id: 'loyalty', label: 'Упайлар', icon: FiAward },
-  { id: 'info', label: 'Жеке маалымат', icon: FiUserIcon },
+  { id: 'cashback', label: 'Кэшбэк', icon: FiCreditCard },   // ✅ ЖАҢЫ
+  { id: 'friends', label: 'Достор', icon: FiUsers },
+  { id: 'info', label: 'Маалымат', icon: FiUserIcon },
 ];
 
-/* ====== СТАТУС ====== */
 const STATUS_CONFIG = {
   'Кабыл алынды': { color: 'text-blue-600 bg-blue-50', icon: FiClock },
   'Жолдо': { color: 'text-yellow-600 bg-yellow-50', icon: FiTruck },
@@ -25,7 +29,6 @@ const STATUS_CONFIG = {
   'Жокко чыгарылды': { color: 'text-red-600 bg-red-50', icon: FiXCircle },
 };
 
-/* ====== TIMELINE ЭТАПТАРЫ ====== */
 const TIMELINE_STEPS = [
   { id: 'Кабыл алынды', label: 'Кабыл алынды', icon: FiClock, desc: 'Буйрутмаңыз иштетилүүдө' },
   { id: 'Жолдо', label: 'Жолдо', icon: FiTruck, desc: 'Курьер жолдо' },
@@ -41,9 +44,25 @@ const ProfileModal = ({ isOpen, onClose }) => {
   const { currentUser, logout, favorites, toggleFavorite, showToast, addToCart } = useApp();
   const { orders, removeOrder } = useOrder();
   const { points, history } = useLoyalty();
+  const { myCode, friends, bonusBalance, generateMyCode, getReferralLink, rules } = useReferral();
+  // ✅ ЖАҢЫ
+  const {
+    balance: cashbackBalance,
+    history: cashbackHistory,
+    totalEarned: cashbackEarned,
+    totalSpent: cashbackSpent,
+    rules: cashbackRules,
+  } = useCashback();
 
   const [activeTab, setActiveTab] = useState('orders');
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && currentUser && !myCode) {
+      generateMyCode(currentUser.name);
+    }
+  }, [isOpen, currentUser, myCode, generateMyCode]);
 
   useEffect(() => {
     const onKey = (e) => {
@@ -74,6 +93,43 @@ const ProfileModal = ({ isOpen, onClose }) => {
   const handleLogout = () => {
     logout();
     onClose();
+  };
+
+  const handleCopyLink = async () => {
+    const link = getReferralLink();
+    if (!link) {
+      showToast('Шилтеме жок', 'error');
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopied(true);
+      showToast('✅ Шилтеме көчүрүлдү!', 'success');
+      setTimeout(() => setCopied(false), 2500);
+    } catch (err) {
+      showToast('Көчүрүү мүмкүн болбоду', 'error');
+    }
+  };
+
+  const handleShare = async (platform) => {
+    const link = getReferralLink();
+    const text = `🎁 Nooruz Market'ке кошул! Менин шилтемем менен ${rules.FRIEND_DISCOUNT} сом арзандатуу ал:\n\n${link}`;
+
+    if (platform === 'native' && navigator.share) {
+      try {
+        await navigator.share({ title: 'Nooruz Market', text, url: link });
+        return;
+      } catch (err) {
+        if (err.name !== 'AbortError') console.warn(err);
+        return;
+      }
+    }
+
+    let url = '';
+    if (platform === 'whatsapp') url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    else if (platform === 'telegram') url = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`;
+
+    if (url) window.open(url, '_blank');
   };
 
   const orderCount = orders.length;
@@ -115,6 +171,25 @@ const ProfileModal = ({ isOpen, onClose }) => {
           0% { transform: translateX(-150%) skewX(-20deg); }
           100% { transform: translateX(400%) skewX(-20deg); }
         }
+        @keyframes giftBounce {
+          0%, 100% { transform: scale(1) rotate(-5deg); }
+          50% { transform: scale(1.15) rotate(5deg); }
+        }
+        @keyframes copyPop {
+          0% { transform: scale(1); }
+          50% { transform: scale(1.15); }
+          100% { transform: scale(1); }
+        }
+        @keyframes friendIn {
+          0% { opacity: 0; transform: translateX(-20px) scale(.9); }
+          60% { transform: translateX(4px) scale(1.02); }
+          100% { opacity: 1; transform: translateX(0) scale(1); }
+        }
+        @keyframes badgeFloat {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-4px); }
+        }
+
         .profile-overlay-anim { animation: profileOverlayIn .35s ease-out both; }
         .profile-modal-anim { animation: profileModalIn .5s cubic-bezier(.34,1.56,.64,1) both; }
         .tab-content-anim { animation: tabContentIn .4s cubic-bezier(.34,1.56,.64,1) both; }
@@ -179,7 +254,6 @@ const ProfileModal = ({ isOpen, onClose }) => {
         }
         .empty-icon-anim { animation: emptyFloat 3s ease-in-out infinite; }
 
-        /* Loyalty card */
         .loyalty-card {
           position: relative;
           overflow: hidden;
@@ -197,92 +271,53 @@ const ProfileModal = ({ isOpen, onClose }) => {
         .coin-float { animation: coinFloat 3s ease-in-out infinite; }
         .points-pulse { animation: pointsPulse 2.5s ease-in-out infinite; }
 
-        /* History item */
         .history-item {
           transition: all .3s cubic-bezier(.34,1.56,.64,1);
         }
-        .history-item:hover {
-          transform: translateX(4px);
-        }
+        .history-item:hover { transform: translateX(4px); }
 
-        /* ============================================================
-           TIMELINE (БУЙРУТМА КӨЗӨМӨЛДӨӨ)
-           ============================================================ */
-        @keyframes timelinePulse {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(16,185,129,.6); }
-          50% { box-shadow: 0 0 0 10px rgba(16,185,129,0); }
-        }
-        @keyframes timelineRing {
-          0% { transform: scale(1); opacity: .6; }
-          100% { transform: scale(2); opacity: 0; }
-        }
-        @keyframes truckMove {
-          0%, 100% { transform: translateX(0); }
-          50% { transform: translateX(6px); }
-        }
-        @keyframes checkPop {
-          0% { transform: scale(0) rotate(-180deg); opacity: 0; }
-          60% { transform: scale(1.3) rotate(10deg); }
-          100% { transform: scale(1) rotate(0); opacity: 1; }
-        }
-        @keyframes progressGrow {
-          from { width: 0; }
-        }
-        @keyframes stepFadeIn {
-          from { opacity: 0; transform: translateX(-15px); }
-          to { opacity: 1; transform: translateX(0); }
-        }
-
-        .timeline-step {
-          animation: stepFadeIn .5s cubic-bezier(.34,1.56,.64,1) both;
-        }
-        .timeline-dot-active {
-          animation: timelinePulse 2s ease-in-out infinite;
-        }
-        .timeline-dot-active::before {
-          content: '';
-          position: absolute;
-          inset: 0;
-          border-radius: 50%;
-          background: currentColor;
-          animation: timelineRing 1.8s ease-out infinite;
-        }
-        .timeline-truck {
-          animation: truckMove 1.5s ease-in-out infinite;
-        }
-        .timeline-check {
-          animation: checkPop .6s cubic-bezier(.34,1.56,.64,1);
-        }
-        .timeline-progress-fill {
-          animation: progressGrow 1s cubic-bezier(.34,1.56,.64,1) both;
-        }
-
-        /* Status badge animations */
-        @keyframes statusFloat {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-2px); }
-        }
-        .status-badge-float {
-          animation: statusFloat 2.5s ease-in-out infinite;
-        }
-
-        /* Order card shine */
-        .order-card-shine {
+        /* ========== REFERRAL ========== */
+        .ref-card {
           position: relative;
           overflow: hidden;
         }
-        .order-card-shine::before {
+        .ref-card::before {
           content: '';
           position: absolute;
           top: 0; left: 0; bottom: 0;
-          width: 80px;
-          background: linear-gradient(90deg, transparent, rgba(255,255,255,.5), transparent);
+          width: 100px;
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,.4), transparent);
           transform: translateX(-150%) skewX(-20deg);
+          animation: shineMove 4s ease-in-out infinite;
           pointer-events: none;
         }
-        .order-card-shine:hover::before {
-          animation: shineMove 1s ease-out;
+        .gift-bounce { animation: giftBounce 2.5s ease-in-out infinite; }
+
+        .ref-code-box {
+          transition: all .35s cubic-bezier(.34,1.56,.64,1);
         }
+        .ref-code-box:hover {
+          transform: translateY(-3px);
+          box-shadow: 0 15px 30px -10px rgba(16,185,129,.4);
+        }
+
+        .copy-btn { transition: all .35s cubic-bezier(.34,1.56,.64,1); }
+        .copy-btn:hover { transform: scale(1.05); }
+        .copy-btn:active { transform: scale(.95); }
+        .copy-btn.copied { animation: copyPop .5s cubic-bezier(.34,1.56,.64,1); }
+
+        .share-btn { transition: all .35s cubic-bezier(.34,1.56,.64,1); }
+        .share-btn:hover {
+          transform: translateY(-3px) scale(1.05);
+          box-shadow: 0 12px 25px -8px rgba(0,0,0,.25);
+        }
+
+        .friend-item { animation: friendIn .5s cubic-bezier(.34,1.56,.64,1) both; }
+        .friend-item:hover {
+          transform: translateX(4px);
+          box-shadow: 0 8px 20px -8px rgba(16,185,129,.25);
+        }
+        .badge-float { animation: badgeFloat 2.5s ease-in-out infinite; }
       `}</style>
 
       <div
@@ -294,7 +329,7 @@ const ProfileModal = ({ isOpen, onClose }) => {
           onClick={(e) => e.stopPropagation()}
         >
           <div className="profile-blob bg-emerald-400 w-40 h-40 -top-10 -right-10" />
-          <div className="profile-blob bg-yellow-300 w-32 h-32 -bottom-10 -left-10" style={{ animationDelay: '2s' }} />
+          <div className="profile-blob bg-pink-300 w-32 h-32 -bottom-10 -left-10" style={{ animationDelay: '2s' }} />
 
           {/* HEADER */}
           <div className="relative z-10 px-7 pt-7 pb-5 border-b border-gray-100 bg-gradient-to-br from-emerald-50 to-white">
@@ -347,6 +382,8 @@ const ProfileModal = ({ isOpen, onClose }) => {
                 const count = tab.id === 'orders' ? orderCount
                   : tab.id === 'favorites' ? favoriteCount
                   : tab.id === 'loyalty' ? points
+                  : tab.id === 'cashback' ? cashbackBalance   // ✅ ЖАҢЫ
+                  : tab.id === 'friends' ? friends.length
                   : 0;
                 return (
                   <button
@@ -373,15 +410,12 @@ const ProfileModal = ({ isOpen, onClose }) => {
 
           {/* CONTENT */}
           <div className="profile-scroll flex-grow overflow-y-auto px-7 pb-6 relative z-10">
-            {/* ORDERS */}
+
+            {/* ========== ORDERS ========== */}
             {activeTab === 'orders' && (
               <div className="tab-content-anim">
                 {orders.length === 0 ? (
-                  <EmptyState
-                    icon={FiPackage}
-                    title="Буйрутма жок"
-                    subtitle="Азыктарды себетке кошуп, биринчи буйрутмаңызды бериңиз"
-                  />
+                  <EmptyState icon={FiPackage} title="Буйрутма жок" subtitle="Азыктарды себетке кошуп, биринчи буйрутмаңызды бериңиз" />
                 ) : (
                   <div className="space-y-3 mt-2">
                     {orders.map((order, i) => {
@@ -391,7 +425,7 @@ const ProfileModal = ({ isOpen, onClose }) => {
                         <div
                           key={order.id}
                           onClick={() => setSelectedOrder(order)}
-                          className="profile-order-item order-card-shine list-item-anim bg-white border-2 border-gray-100 rounded-2xl p-4"
+                          className="profile-order-item list-item-anim bg-white border-2 border-gray-100 rounded-2xl p-4"
                           style={{ animationDelay: `${i * 0.05}s` }}
                         >
                           <div className="flex justify-between items-start mb-2">
@@ -401,7 +435,7 @@ const ProfileModal = ({ isOpen, onClose }) => {
                               </p>
                               <p className="text-xs text-gray-500 mt-0.5">{order.createdAt}</p>
                             </div>
-                            <span className={`status-badge-float inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${statusCfg.color}`}>
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${statusCfg.color}`}>
                               <StatusIcon className="text-xs" />
                               {order.status}
                             </span>
@@ -426,15 +460,11 @@ const ProfileModal = ({ isOpen, onClose }) => {
               </div>
             )}
 
-            {/* FAVORITES */}
+            {/* ========== FAVORITES ========== */}
             {activeTab === 'favorites' && (
               <div className="tab-content-anim">
                 {favorites.length === 0 ? (
-                  <EmptyState
-                    icon={FiHeart}
-                    title="Тандалма жок"
-                    subtitle="Жаккан товарларды жүрөкчөгө басып сактаңыз"
-                  />
+                  <EmptyState icon={FiHeart} title="Тандалма жок" subtitle="Жаккан товарларды жүрөкчөгө басып сактаңыз" />
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
                     {favorites.map((fav, i) => (
@@ -476,7 +506,7 @@ const ProfileModal = ({ isOpen, onClose }) => {
               </div>
             )}
 
-            {/* LOYALTY TAB */}
+            {/* ========== LOYALTY ========== */}
             {activeTab === 'loyalty' && (
               <div className="tab-content-anim space-y-4 mt-2">
                 <div className="loyalty-card bg-gradient-to-br from-yellow-400 via-amber-500 to-orange-500 rounded-3xl p-6 text-white shadow-2xl relative">
@@ -521,10 +551,6 @@ const ProfileModal = ({ isOpen, onClose }) => {
                       <span className="text-yellow-500 font-bold">3.</span>
                       <p>Буйрутманын <strong>{LOYALTY_RULES.MAX_REDEEM_PERCENT}%</strong> га чейин упай менен төлөсө болот</p>
                     </div>
-                    <div className="flex items-start gap-2">
-                      <span className="text-yellow-500 font-bold">4.</span>
-                      <p>Минимум <strong>{LOYALTY_RULES.MIN_REDEEM} упай</strong> колдонуу керек</p>
-                    </div>
                   </div>
                 </div>
 
@@ -547,20 +573,12 @@ const ProfileModal = ({ isOpen, onClose }) => {
                           className="history-item flex items-center gap-3 p-3 bg-white border border-gray-100 rounded-xl"
                         >
                           <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
-                            item.type === 'earn'
-                              ? 'bg-emerald-100 text-emerald-600'
-                              : 'bg-red-100 text-red-600'
+                            item.type === 'earn' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'
                           }`}>
-                            {item.type === 'earn' ? (
-                              <FiTrendingUp className="text-lg" />
-                            ) : (
-                              <FiTrendingDown className="text-lg" />
-                            )}
+                            {item.type === 'earn' ? <FiTrendingUp className="text-lg" /> : <FiTrendingDown className="text-lg" />}
                           </div>
                           <div className="flex-grow min-w-0">
-                            <p className="text-sm font-semibold text-gray-800 truncate">
-                              {item.description}
-                            </p>
+                            <p className="text-sm font-semibold text-gray-800 truncate">{item.description}</p>
                             <p className="text-[10px] text-gray-400">{item.date}</p>
                           </div>
                           <span className={`font-bold text-sm flex-shrink-0 ${
@@ -576,7 +594,288 @@ const ProfileModal = ({ isOpen, onClose }) => {
               </div>
             )}
 
-            {/* INFO */}
+            {/* ========== CASHBACK (ЖАҢЫ) ========== */}
+            {activeTab === 'cashback' && (
+              <div className="tab-content-anim space-y-4 mt-2">
+
+                {/* BIG CASHBACK CARD */}
+                <div className="loyalty-card bg-gradient-to-br from-emerald-500 via-emerald-600 to-green-700 rounded-3xl p-6 text-white shadow-2xl relative">
+                  <div className="relative z-10">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="coin-float w-14 h-14 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center">
+                        <FiCreditCard className="text-3xl" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold opacity-90">Кэшбэк балансыңыз</p>
+                        <p className="text-[10px] opacity-80">Nooruz Market Cashback</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-baseline gap-2 mb-2">
+                      <span className="text-5xl font-black">{cashbackBalance.toLocaleString()}</span>
+                      <span className="text-lg font-bold opacity-90">сом</span>
+                    </div>
+
+                    <p className="text-xs opacity-90">
+                      💰 Ар бир буйрутмадан {cashbackRules.EARN_RATE * 100}% кайтарылат
+                    </p>
+                  </div>
+                </div>
+
+                {/* STATS */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-gradient-to-br from-emerald-50 to-green-50 rounded-2xl p-4 border border-emerald-100">
+                    <div className="flex items-center gap-2 mb-1">
+                      <FiTrendingUp className="text-emerald-600" />
+                      <span className="text-xs font-semibold text-emerald-700">Топтолгон</span>
+                    </div>
+                    <p className="text-xl font-bold text-emerald-700">
+                      +{cashbackEarned.toLocaleString()}
+                    </p>
+                    <p className="text-[10px] text-emerald-600 mt-0.5">бардык убакытта</p>
+                  </div>
+
+                  <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-2xl p-4 border border-orange-100">
+                    <div className="flex items-center gap-2 mb-1">
+                      <FiTrendingDown className="text-orange-600" />
+                      <span className="text-xs font-semibold text-orange-700">Колдонулган</span>
+                    </div>
+                    <p className="text-xl font-bold text-orange-700">
+                      -{cashbackSpent.toLocaleString()}
+                    </p>
+                    <p className="text-[10px] text-orange-600 mt-0.5">бардык убакытта</p>
+                  </div>
+                </div>
+
+                {/* HOW IT WORKS */}
+                <div className="bg-gray-50 rounded-2xl p-4 space-y-3">
+                  <h3 className="font-bold text-sm text-gray-700 flex items-center gap-2">
+                    <FiGift className="text-emerald-500" />
+                    Кантип иштейт?
+                  </h3>
+
+                  <div className="space-y-2 text-xs text-gray-600">
+                    <div className="flex items-start gap-2">
+                      <span className="text-emerald-500 font-bold">1.</span>
+                      <p>Ар бир буйрутмадан <strong>{cashbackRules.EARN_RATE * 100}%</strong> кэшбэк аласыз</p>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-emerald-500 font-bold">2.</span>
+                      <p>Кэшбэк балансыңызда топтолот</p>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-emerald-500 font-bold">3.</span>
+                      <p>Кийинки буйрутмада <strong>{cashbackRules.MAX_REDEEM_PERCENT}%</strong> га чейин колдонсо болот</p>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-emerald-500 font-bold">4.</span>
+                      <p>Эң аз колдонуу: <strong>{cashbackRules.MIN_REDEEM} сом</strong></p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* HISTORY */}
+                <div>
+                  <h3 className="font-bold text-sm text-gray-700 mb-3 flex items-center gap-2">
+                    <FiClock className="text-emerald-500" />
+                    Кэшбэк тарыхы
+                  </h3>
+
+                  {cashbackHistory.length === 0 ? (
+                    <div className="text-center py-8 text-gray-400">
+                      <FiCreditCard className="text-4xl mx-auto mb-2 opacity-30" />
+                      <p className="text-xs">Азырынча тарых жок</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {cashbackHistory.map((item) => (
+                        <div
+                          key={item.id}
+                          className="history-item flex items-center gap-3 p-3 bg-white border border-gray-100 rounded-xl"
+                        >
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                            item.type === 'earn' ? 'bg-emerald-100 text-emerald-600' : 'bg-orange-100 text-orange-600'
+                          }`}>
+                            {item.type === 'earn' ? <FiTrendingUp className="text-lg" /> : <FiTrendingDown className="text-lg" />}
+                          </div>
+                          <div className="flex-grow min-w-0">
+                            <p className="text-sm font-semibold text-gray-800 truncate">{item.description}</p>
+                            <p className="text-[10px] text-gray-400">{item.date}</p>
+                          </div>
+                          <span className={`font-bold text-sm flex-shrink-0 ${
+                            item.type === 'earn' ? 'text-emerald-600' : 'text-orange-600'
+                          }`}>
+                            {item.amount > 0 ? '+' : ''}{item.amount.toLocaleString()}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+              </div>
+            )}
+
+            {/* ========== FRIENDS (РЕФЕРАЛ) ========== */}
+            {activeTab === 'friends' && (
+              <div className="tab-content-anim space-y-4 mt-2">
+
+                {/* BIG REFERRAL CARD */}
+                <div className="ref-card bg-gradient-to-br from-purple-500 via-pink-500 to-red-500 rounded-3xl p-6 text-white shadow-2xl">
+                  <div className="relative z-10">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="gift-bounce w-14 h-14 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center">
+                        <FiGift className="text-3xl" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold opacity-90">Рефералдык программа</p>
+                        <p className="text-[10px] opacity-80">Досторуңузду чакырыңыз</p>
+                      </div>
+                    </div>
+
+                    <p className="text-sm font-semibold mb-1">Ар бир дос үчүн аласыз:</p>
+                    <div className="flex items-baseline gap-2 mb-4">
+                      <span className="text-4xl font-black">+{rules.BONUS_PER_FRIEND}</span>
+                      <span className="text-lg font-bold opacity-90">сом</span>
+                    </div>
+
+                    <p className="text-xs opacity-90">
+                      💰 Жалпы балансыңыз: <strong>{bonusBalance} сом</strong>
+                    </p>
+                  </div>
+                </div>
+
+                {/* REFERRAL CODE */}
+                <div className="ref-code-box bg-white border-2 border-dashed border-emerald-300 rounded-2xl p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-bold text-sm text-gray-700 flex items-center gap-2">
+                      <FiShare2 className="text-emerald-500" />
+                      Сиздин реферал кодуңуз
+                    </h3>
+                  </div>
+
+                  <div className="flex gap-2 mb-3">
+                    <div className="flex-grow bg-gradient-to-r from-emerald-50 to-green-50 rounded-xl px-4 py-3 flex items-center justify-center border-2 border-emerald-200">
+                      <span className="font-mono font-black text-lg text-emerald-700 tracking-wider">
+                        {myCode || 'ЖҮКТӨЛҮҮДӨ...'}
+                      </span>
+                    </div>
+                    <button
+                      onClick={handleCopyLink}
+                      className={`copy-btn ${copied ? 'copied bg-emerald-600' : 'bg-emerald-500'} text-white px-4 rounded-xl font-bold shadow-md flex items-center justify-center gap-2 min-w-[100px]`}
+                    >
+                      {copied ? (
+                        <>
+                          <FiCheck className="text-lg" />
+                          Даяр!
+                        </>
+                      ) : (
+                        <>
+                          <FiCopy className="text-lg" />
+                          Көчүрүү
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  <p className="text-[11px] text-gray-500 text-center">
+                    💡 Шилтемени досторуңузга жөнөтүңүз — алар {rules.FRIEND_DISCOUNT} сом арзандатуу алышат
+                  </p>
+                </div>
+
+                {/* SHARE BUTTONS */}
+                <div className="grid grid-cols-3 gap-3">
+                  <button
+                    onClick={() => handleShare('whatsapp')}
+                    className="share-btn bg-gradient-to-br from-green-400 to-green-600 text-white p-4 rounded-2xl font-bold shadow-lg flex flex-col items-center gap-2"
+                  >
+                    <FiSend className="text-2xl" />
+                    <span className="text-xs">WhatsApp</span>
+                  </button>
+
+                  <button
+                    onClick={() => handleShare('telegram')}
+                    className="share-btn bg-gradient-to-br from-sky-400 to-sky-600 text-white p-4 rounded-2xl font-bold shadow-lg flex flex-col items-center gap-2"
+                  >
+                    <FiSend className="text-2xl" />
+                    <span className="text-xs">Telegram</span>
+                  </button>
+
+                  <button
+                    onClick={() => handleShare('native')}
+                    className="share-btn bg-gradient-to-br from-purple-400 to-purple-600 text-white p-4 rounded-2xl font-bold shadow-lg flex flex-col items-center gap-2"
+                  >
+                    <FiShare2 className="text-2xl" />
+                    <span className="text-xs">Дагы</span>
+                  </button>
+                </div>
+
+                {/* FRIENDS LIST */}
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-bold text-sm text-gray-700 flex items-center gap-2">
+                      <FiUsers className="text-emerald-500" />
+                      Чакырылган достор
+                    </h3>
+                    {friends.length > 0 && (
+                      <span className="badge-float text-xs font-bold bg-purple-100 text-purple-700 px-2.5 py-1 rounded-full">
+                        {friends.length}
+                      </span>
+                    )}
+                  </div>
+
+                  {friends.length === 0 ? (
+                    <div className="text-center py-10 text-gray-400 bg-gray-50 rounded-2xl">
+                      <FiUserPlus className="text-5xl mx-auto mb-3 opacity-30" />
+                      <p className="text-sm font-semibold text-gray-600">Азырынча дос чакырган жоксуз</p>
+                      <p className="text-xs mt-1 max-w-xs mx-auto">
+                        Жогорку шилтемени досторуңузга жөнөтүп, {rules.BONUS_PER_FRIEND} сом бонус алыңыз
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {friends.map((friend, i) => (
+                        <div
+                          key={friend.id}
+                          className="friend-item flex items-center gap-3 p-3 bg-white border-2 border-purple-100 rounded-xl"
+                          style={{ animationDelay: `${i * 0.05}s` }}
+                        >
+                          <div className="w-11 h-11 rounded-full bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center text-white font-bold flex-shrink-0 shadow-md">
+                            {friend.name?.charAt(0)?.toUpperCase() || 'F'}
+                          </div>
+                          <div className="flex-grow min-w-0">
+                            <p className="text-sm font-bold text-gray-800 truncate">{friend.name}</p>
+                            <p className="text-[10px] text-gray-400">{friend.date}</p>
+                          </div>
+                          <div className="flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full flex-shrink-0">
+                            <FiDollarSign className="text-xs" />
+                            <span className="text-xs font-bold">+{friend.bonus}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* RULES */}
+                <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-4 border border-purple-100">
+                  <h3 className="font-bold text-sm text-purple-800 mb-3 flex items-center gap-2">
+                    <FiAward className="text-purple-600" />
+                    Кантип иштейт?
+                  </h3>
+                  <div className="space-y-2 text-xs text-purple-700">
+                    <p><strong>1.</strong> Реферал шилтемеңизди досторуңузга жөнөтүңүз</p>
+                    <p><strong>2.</strong> Досуңуз шилтеме аркылуу кирип, каттоодон өтөт</p>
+                    <p><strong>3.</strong> Досуңуз <strong>{rules.FRIEND_DISCOUNT} сом</strong> арзандатуу алат</p>
+                    <p><strong>4.</strong> Сиз <strong>{rules.BONUS_PER_FRIEND} сом</strong> бонус аласыз</p>
+                    <p><strong>5.</strong> Бонусту кийинки буйрутмада колдоно аласыз</p>
+                  </div>
+                </div>
+
+              </div>
+            )}
+
+            {/* ========== INFO ========== */}
             {activeTab === 'info' && (
               <div className="tab-content-anim space-y-3 mt-2">
                 <InfoRow icon={FiUserIcon} label="Аты-жөнү" value={currentUser?.name} />
@@ -637,9 +936,7 @@ const EmptyState = ({ icon: Icon, title, subtitle }) => (
   </div>
 );
 
-/* ============================================================
-   ✅ TIMELINE КОМПОНЕНТИ
-   ============================================================ */
+/* ====== OrderTimeline ====== */
 const OrderTimeline = ({ status }) => {
   const currentIndex = getStatusIndex(status);
   const isCancelled = status === 'Жокко чыгарылды';
@@ -670,17 +967,14 @@ const OrderTimeline = ({ status }) => {
         </span>
       </div>
 
-      {/* Timeline */}
       <div className="relative">
-        {/* Progress line */}
         <div className="absolute top-5 left-5 right-5 h-1 bg-gray-200 rounded-full overflow-hidden">
           <div
-            className="timeline-progress-fill h-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-600 rounded-full transition-all duration-1000"
+            className="h-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-600 rounded-full transition-all duration-1000"
             style={{ width: `${(currentIndex / (TIMELINE_STEPS.length - 1)) * 100}%` }}
           />
         </div>
 
-        {/* Steps */}
         <div className="relative flex justify-between">
           {TIMELINE_STEPS.map((step, i) => {
             const Icon = step.icon;
@@ -689,37 +983,21 @@ const OrderTimeline = ({ status }) => {
             const isDone = i < currentIndex;
 
             return (
-              <div
-                key={step.id}
-                className="timeline-step flex flex-col items-center gap-2 flex-1"
-                style={{ animationDelay: `${i * 0.15}s` }}
-              >
-                {/* Dot */}
+              <div key={step.id} className="flex flex-col items-center gap-2 flex-1">
                 <div
                   className={`relative w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-500 ${
                     isCurrent
-                      ? 'bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-lg scale-110 timeline-dot-active'
+                      ? 'bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-lg scale-110'
                       : isDone
                         ? 'bg-emerald-500 text-white shadow-md'
                         : 'bg-white border-2 border-gray-200 text-gray-300'
                   }`}
                 >
-                  {isDone ? (
-                    <FiCheckCircle className="text-lg timeline-check" />
-                  ) : isCurrent && step.id === 'Жолдо' ? (
-                    <Icon className="text-lg timeline-truck" />
-                  ) : isCurrent ? (
-                    <Icon className="text-lg" />
-                  ) : (
-                    <Icon className="text-lg" />
-                  )}
+                  {isDone ? <FiCheckCircle className="text-lg" /> : <Icon className="text-lg" />}
                 </div>
 
-                {/* Label */}
                 <div className="text-center">
-                  <p className={`text-xs font-bold ${
-                    isActive ? 'text-emerald-700' : 'text-gray-400'
-                  }`}>
+                  <p className={`text-xs font-bold ${isActive ? 'text-emerald-700' : 'text-gray-400'}`}>
                     {step.label}
                   </p>
                   <p className={`text-[10px] mt-0.5 max-w-[90px] ${
@@ -729,7 +1007,6 @@ const OrderTimeline = ({ status }) => {
                   </p>
                 </div>
 
-                {/* Current time indicator */}
                 {isCurrent && (
                   <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
                     Азыр
@@ -740,23 +1017,11 @@ const OrderTimeline = ({ status }) => {
           })}
         </div>
       </div>
-
-      {/* Info */}
-      <div className="mt-5 pt-4 border-t border-emerald-100 flex items-center gap-2 text-xs text-emerald-700">
-        <FiClock className="flex-shrink-0" />
-        <span>
-          {currentIndex === 0 && 'Буйрутмаңыз 30 мүнөт ичинде жеткирилет'}
-          {currentIndex === 1 && 'Курьер 15-30 мүнөттө жетет'}
-          {currentIndex === 2 && 'Буйрутма ийгиликтүү жеткирилди! 🎉'}
-        </span>
-      </div>
     </div>
   );
 };
 
-/* ============================================================
-   ORDER DETAIL MODAL (TIMELINE МЕНЕН)
-   ============================================================ */
+/* ====== OrderDetailModal ====== */
 const OrderDetailModal = ({ order, onClose, onRemove }) => {
   const statusCfg = STATUS_CONFIG[order.status] || STATUS_CONFIG['Кабыл алынды'];
   const StatusIcon = statusCfg.icon;
@@ -784,19 +1049,14 @@ const OrderDetailModal = ({ order, onClose, onRemove }) => {
               <h3 className="font-bold text-lg">Буйрутма №{order.id.split('-')[1] || order.id}</h3>
               <p className="text-xs text-gray-500 mt-0.5">{order.createdAt}</p>
             </div>
-            <button
-              onClick={onClose}
-              className="profile-close text-gray-400 p-2 rounded-full hover:bg-red-50"
-            >
+            <button onClick={onClose} className="profile-close text-gray-400 p-2 rounded-full hover:bg-red-50">
               <FiX className="text-2xl" />
             </button>
           </div>
 
           <div className="profile-scroll flex-grow overflow-y-auto px-6 py-5">
-            {/* ✅ TIMELINE */}
             <OrderTimeline status={order.status} />
 
-            {/* Status badge */}
             <div className={`flex items-center gap-2 px-4 py-3 rounded-xl mb-4 ${statusCfg.color}`}>
               <StatusIcon />
               <span className="font-bold text-sm">{order.status}</span>
@@ -854,18 +1114,6 @@ const OrderDetailModal = ({ order, onClose, onRemove }) => {
                 {order.total?.toLocaleString()} сом
               </span>
             </div>
-
-            {order.pointsUsed > 0 && (
-              <div className="flex justify-between items-center bg-yellow-50 rounded-xl p-3 mb-3 text-sm">
-                <span className="text-yellow-700 font-semibold flex items-center gap-1.5">
-                  <FiAward className="text-xs" />
-                  Упай менен төлөндү:
-                </span>
-                <span className="font-bold text-yellow-700">
-                  -{order.pointsUsed.toLocaleString()} сом
-                </span>
-              </div>
-            )}
 
             {order.comment && (
               <div className="bg-gray-50 rounded-xl p-4 text-sm text-gray-600 mb-3">

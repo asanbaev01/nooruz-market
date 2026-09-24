@@ -1,6 +1,7 @@
 {
-  "short_name": "React App",
-  "name": "Create React App Sample",
+  "short_name": "Nooruz",
+  "name": "Nooruz Market — Свежие продукты",
+  "description": "Кыргызстандын эң мыкты азыктары онлайн",
   "icons": [
     {
       "src": "favicon.ico",
@@ -10,16 +11,38 @@
     {
       "src": "logo192.png",
       "type": "image/png",
-      "sizes": "192x192"
+      "sizes": "192x192",
+      "purpose": "any maskable"
     },
     {
       "src": "logo512.png",
       "type": "image/png",
-      "sizes": "512x512"
+      "sizes": "512x512",
+      "purpose": "any maskable"
     }
   ],
-  "start_url": ".",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff"
+  "orientation": "portrait",
+  "theme_color": "#10B981",
+  "background_color": "#ECFDF5",
+  "lang": "ky",
+  "categories": ["shopping", "food", "lifestyle"],
+  "shortcuts": [
+    {
+      "name": "Азыктар",
+      "short_name": "Азыктар",
+      "description": "Бардык азыктарды көрүү",
+      "url": "/#products-section",
+      "icons": [{ "src": "logo192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Себет",
+      "short_name": "Себет",
+      "description": "Себетти ачуу",
+      "url": "/?cart=open",
+      "icons": [{ "src": "logo192.png", "sizes": "192x192" }]
+    }
+  ]
 }

@@ -20,9 +20,11 @@ import CheckoutModal from './components/CheckoutModal';
 import FloatingContact from './components/FloatingContact';
 import DeliveryMap from './components/DeliveryMap';
 import AdminPanel from './components/AdminPanel';
+import PWAInstallPrompt from './components/PWAInstallPrompt';
 import { ProductsGridSkeleton } from './components/Skeletons';
 import { useApp } from './context/AppContext';
 import { useOrder } from './context/OrderContext';
+import LiveChat from './components/LiveChat';
 import { FiHome, FiX, FiArrowUp, FiSliders, FiSearch, FiPackage } from 'react-icons/fi';
 
 function App() {
@@ -368,7 +370,6 @@ function App() {
             onSelect={setSelectedCategory}
           />
 
-          {/* ✅ ЭҢ КӨП САТЫЛГАНДАР */}
           <BestSellers onProductClick={setSelectedProduct} />
 
           <section
@@ -524,7 +525,6 @@ function App() {
           }}
         />
 
-        {/* ✅ АДМИН ПАНЕЛЬ */}
         <AdminPanel
           isOpen={adminOpen}
           onClose={() => setAdminOpen(false)}
@@ -589,6 +589,10 @@ function App() {
         <ToastContainer />
 
         <FloatingContact />
+        <LiveChat />
+
+        {/* ✅ PWA INSTALL PROMPT */}
+        <PWAInstallPrompt />
 
         {showScrollTop && (
           <button

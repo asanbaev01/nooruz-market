@@ -9,6 +9,10 @@ import { ThemeProvider } from './context/ThemeContext';
 import { LanguageProvider } from './context/LanguageContext';
 import { LoyaltyProvider } from './context/LoyaltyContext';
 import { NotificationProvider } from './context/NotificationContext';
+import { ReferralProvider } from './context/ReferralContext';
+import { CashbackProvider } from './context/CashbackContext'; // ✅ ЖАҢЫ
+import * as serviceWorkerRegistration from './serviceWorkerRegistration';
+import { ChatProvider } from './context/ChatContext';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
@@ -20,7 +24,13 @@ root.render(
             <ReviewProvider>
               <LoyaltyProvider>
                 <NotificationProvider>
-                  <App />
+                  <ReferralProvider>
+                    <CashbackProvider>  {/* ✅ ЖАҢЫ */}
+                      <ChatProvider> 
+                        <App />
+                      </ChatProvider>
+                    </CashbackProvider>
+                  </ReferralProvider>
                 </NotificationProvider>
               </LoyaltyProvider>
             </ReviewProvider>
@@ -30,3 +40,14 @@ root.render(
     </LanguageProvider>
   </React.StrictMode>
 );
+
+/* ✅ PWA SERVICE WORKER КАТТОО */
+serviceWorkerRegistration.register({
+  onSuccess: () => console.log('🎉 PWA ийгиликтүү орнотулду!'),
+  onUpdate: (registration) => {
+    console.log('🔄 Жаңы версия жеткиликтүү');
+    if (window.confirm('Жаңы версия жеткиликтүү. Жаңылайбызбы?')) {
+      window.location.reload();
+    }
+  },
+});

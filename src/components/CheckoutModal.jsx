@@ -7,14 +7,23 @@ import {
 import { useApp } from '../context/AppContext';
 import { useOrder } from '../context/OrderContext';
 import { useLoyalty, LOYALTY_RULES } from '../context/LoyaltyContext';
-import { useNotifications } from '../context/NotificationContext'; // ✅ ЖАҢЫ
+import { useNotifications } from '../context/NotificationContext';
+import { useCashback, CASHBACK_RULES } from '../context/CashbackContext'; // ✅ ЖАҢЫ
 import { validatePromoCode } from '../data/promoCodes';
 
 const CheckoutModal = () => {
   const { cart, cartTotal, clearCart, showToast } = useApp();
   const { isCheckoutOpen, closeCheckout, placeOrder, isSubmitting } = useOrder();
   const { points, redeemPoints, getMaxRedeemable, calculateEarnedPoints } = useLoyalty();
-  const { addNotification } = useNotifications(); // ✅ ЖАҢЫ
+  const { addNotification } = useNotifications();
+  // ✅ ЖАҢЫ
+  const {
+    balance: cashbackBalance,
+    earnCashback,
+    redeemCashback,
+    getMaxRedeemable: getMaxCashback,
+    rules: cashbackRules,
+  } = useCashback();
 
   const [formData, setFormData] = useState({
     name: '',
@@ -32,6 +41,11 @@ const CheckoutModal = () => {
   const [usePoints, setUsePoints] = useState(false);
   const [pointsToUse, setPointsToUse] = useState(0);
 
+  // ✅ ЖАҢЫ
+  const [useCashbackState, setUseCashbackState] = useState(false);
+  const [cashbackToUse, setCashbackToUse] = useState(0);
+  const [earnedCashback, setEarnedCashback] = useState(0);
+
   const [isSuccess, setIsSuccess] = useState(false);
   const [earnedPoints, setEarnedPoints] = useState(0);
   const [errors, setErrors] = useState({});
@@ -39,8 +53,12 @@ const CheckoutModal = () => {
   const maxRedeemable = getMaxRedeemable(cartTotal);
   const pointsDiscount = usePoints ? pointsToUse : 0;
   const promoDiscount = appliedPromo?.discount || 0;
+  
+  // ✅ ЖАҢЫ
+  const maxCashbackRedeemable = getMaxCashback(cartTotal);
+  const cashbackDiscount = useCashbackState ? cashbackToUse : 0;
 
-  const finalTotal = Math.max(0, cartTotal - promoDiscount - pointsDiscount);
+  const finalTotal = Math.max(0, cartTotal - promoDiscount - pointsDiscount - cashbackDiscount);
 
   useEffect(() => {
     const onKey = (e) => {
@@ -69,12 +87,21 @@ const CheckoutModal = () => {
       setUsePoints(false);
       setPointsToUse(0);
       setEarnedPoints(0);
+      // ✅ ЖАҢЫ
+      setUseCashbackState(false);
+      setCashbackToUse(0);
+      setEarnedCashback(0);
     }
   }, [isCheckoutOpen]);
 
   useEffect(() => {
     if (pointsToUse > maxRedeemable) setPointsToUse(maxRedeemable);
   }, [maxRedeemable, pointsToUse]);
+
+  // ✅ ЖАҢЫ
+  useEffect(() => {
+    if (cashbackToUse > maxCashbackRedeemable) setCashbackToUse(maxCashbackRedeemable);
+  }, [maxCashbackRedeemable, cashbackToUse]);
 
   if (!isCheckoutOpen) return null;
 
@@ -147,8 +174,10 @@ const CheckoutModal = () => {
       subtotal: cartTotal,
       promoDiscount,
       pointsDiscount,
+      cashbackDiscount,   // ✅ ЖАҢЫ
       promoCode: appliedPromo?.code || null,
       pointsUsed: pointsDiscount,
+      cashbackUsed: cashbackDiscount,   // ✅ ЖАҢЫ
       total: finalTotal,
       paymentMethod: formData.paymentMethod,
       comment: formData.comment.trim(),
@@ -161,10 +190,18 @@ const CheckoutModal = () => {
         redeemPoints(pointsDiscount, orderId);
       }
 
+      // ✅ КЭШБЭК КОЛДОНУУ
+      if (cashbackDiscount > 0) {
+        redeemCashback(cashbackDiscount, orderId);
+      }
+
       const earned = calculateEarnedPoints(finalTotal);
       setEarnedPoints(earned);
 
-      /* ✅ БИЛДИРҮҮ КОШУУ */
+      // ✅ КЭШБЭК ТОПТОО
+      const earnedCb = earnCashback(finalTotal, orderId);
+      setEarnedCashback(earnedCb);
+
       addNotification({
         type: 'order_created',
         title: '🛒 Буйрутма кабыл алынды',
@@ -187,6 +224,10 @@ const CheckoutModal = () => {
         setPromoInput('');
         setUsePoints(false);
         setPointsToUse(0);
+        // ✅ ЖАҢЫ
+        setUseCashbackState(false);
+        setCashbackToUse(0);
+        setEarnedCashback(0);
       }, 3500);
     } else {
       showToast('Ката кетти, кайра аракет кылыңыз', 'error');
@@ -348,6 +389,23 @@ const CheckoutModal = () => {
                       <p className="text-xs text-yellow-700 font-semibold">Сиз уттуңуз!</p>
                       <p className="text-lg font-bold text-yellow-800">
                         +{earnedPoints} упай
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ✅ ЖАҢЫ КЭШБЭК */}
+              {earnedCashback > 0 && (
+                <div className="points-bounce mt-3 bg-gradient-to-r from-emerald-50 to-green-50 border-2 border-emerald-200 rounded-2xl px-6 py-4">
+                  <div className="flex items-center gap-3">
+                    <div className="gift-float w-12 h-12 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white shadow-lg">
+                      <FiCreditCard className="text-xl" />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-xs text-emerald-700 font-semibold">Кэшбэк балансыңызга:</p>
+                      <p className="text-lg font-bold text-emerald-800">
+                        +{earnedCashback.toLocaleString()} сом
                       </p>
                     </div>
                   </div>
@@ -539,6 +597,71 @@ const CheckoutModal = () => {
                   </div>
                 )}
 
+                {/* ✅ ЖАҢЫ КЭШБЭК КОЛДОНУУ БЛОГУ */}
+                {cashbackBalance > 0 && (
+                  <div className="bg-gradient-to-r from-emerald-50 to-green-50 border-2 border-emerald-200 rounded-2xl p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="gift-float w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white shadow-md">
+                          <FiCreditCard className="text-lg" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-emerald-800">Кэшбэк балансыңыз</p>
+                          <p className="text-xs text-emerald-600">{cashbackBalance.toLocaleString()} сом</p>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUseCashbackState(!useCashbackState);
+                          setCashbackToUse(useCashbackState ? 0 : maxCashbackRedeemable);
+                        }}
+                        className={`points-toggle relative w-14 h-7 rounded-full transition-colors ${
+                          useCashbackState ? 'bg-emerald-500' : 'bg-gray-300'
+                        }`}
+                        aria-label="Кэшбэк колдонуу"
+                      >
+                        <span className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow-md transition-all ${
+                          useCashbackState ? 'left-7' : 'left-0.5'
+                        }`} />
+                      </button>
+                    </div>
+
+                    {useCashbackState && (
+                      <>
+                        <div className="flex items-center justify-between mb-2 text-xs">
+                          <span className="text-emerald-700 font-semibold">
+                            Колдонуу: {cashbackToUse} сом
+                          </span>
+                          <span className="text-emerald-600 font-bold">
+                            -{cashbackToUse.toLocaleString()} сом
+                          </span>
+                        </div>
+
+                        <input
+                          type="range"
+                          min={cashbackRules.MIN_REDEEM}
+                          max={maxCashbackRedeemable}
+                          step={10}
+                          value={cashbackToUse}
+                          onChange={(e) => setCashbackToUse(Number(e.target.value))}
+                          className="points-slider w-full"
+                        />
+
+                        <div className="flex justify-between text-[10px] text-emerald-600 mt-1">
+                          <span>Мин: {cashbackRules.MIN_REDEEM}</span>
+                          <span>Макс: {maxCashbackRedeemable}</span>
+                        </div>
+
+                        <p className="text-[10px] text-emerald-700 mt-2 text-center">
+                          💡 Буйрутманын {cashbackRules.MAX_REDEEM_PERCENT}% га чейин колдонсо болот
+                        </p>
+                      </>
+                    )}
+                  </div>
+                )}
+
                 <div>
                   <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
                     <FiTag className="text-emerald-500" />
@@ -681,10 +804,23 @@ const CheckoutModal = () => {
                     </div>
                   )}
 
+                  {/* ✅ ЖАҢЫ КЭШБЭК КӨРСӨТҮҮ */}
+                  {cashbackDiscount > 0 && (
+                    <div className="flex justify-between items-center mb-2 text-sm text-emerald-600">
+                      <span className="flex items-center gap-1.5 font-semibold">
+                        <FiCreditCard className="text-xs" />
+                        Кэшбэк:
+                      </span>
+                      <span className="font-bold">
+                        -{cashbackDiscount.toLocaleString()} сом
+                      </span>
+                    </div>
+                  )}
+
                   <div className="flex justify-between items-center pt-3 border-t border-emerald-100">
                     <span className="text-base font-semibold text-gray-700">Жалпы сумма:</span>
                     <div className="text-right">
-                      {(appliedPromo || pointsDiscount > 0) && (
+                      {(appliedPromo || pointsDiscount > 0 || cashbackDiscount > 0) && (
                         <p className="text-xs text-gray-400 line-through">
                           {cartTotal.toLocaleString()} сом
                         </p>
@@ -695,15 +831,27 @@ const CheckoutModal = () => {
                     </div>
                   </div>
 
+                  {/* ✅ ЖАҢЫ: УПАЙ + КЭШБЭК */}
                   {finalTotal > 0 && (
-                    <div className="mt-3 pt-3 border-t border-emerald-100 flex items-center justify-between text-xs">
-                      <span className="text-yellow-600 font-semibold flex items-center gap-1">
-                        <FiGift className="text-xs" />
-                        Бул буйрутмадан аласыз:
-                      </span>
-                      <span className="font-bold text-yellow-700">
-                        +{calculateEarnedPoints(finalTotal)} упай
-                      </span>
+                    <div className="mt-3 pt-3 border-t border-emerald-100 space-y-1.5">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-yellow-600 font-semibold flex items-center gap-1">
+                          <FiGift className="text-xs" />
+                          Упай:
+                        </span>
+                        <span className="font-bold text-yellow-700">
+                          +{calculateEarnedPoints(finalTotal)} упай
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-emerald-600 font-semibold flex items-center gap-1">
+                          <FiCreditCard className="text-xs" />
+                          Кэшбэк:
+                        </span>
+                        <span className="font-bold text-emerald-700">
+                          +{Math.floor(finalTotal * cashbackRules.EARN_RATE).toLocaleString()} сом
+                        </span>
+                      </div>
                     </div>
                   )}
                 </div>

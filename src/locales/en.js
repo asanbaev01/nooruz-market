@@ -17,14 +17,20 @@ export const en = {
   },
 
   hero: {
-    title: 'Fresh Harvest — Fresh Quality',
-    subtitle: 'Fresh and natural products from the best farms! We deliver clean, healthy and affordable products to every family.',
-    shopNow: 'Shop Now',
-    startSelling: 'Start Selling',
-    stat1: 'Customers',
-    stat2: 'Rating',
-    stat3: 'Sellers',
-  },
+  title: 'Fresh Harvest — Fresh Quality',
+  subtitle: 'Fresh and natural products from the best farms! We deliver clean, healthy and affordable products to every family.',
+  shopNow: 'Shop Now',
+  startSelling: 'Start Selling',
+  stat1: 'Customers',
+  stat2: 'Rating',
+  stat3: 'Sellers',
+  verifiedBadge: '100% Natural Products',          // ✅ ЖАҢЫ
+  floatBadge1Title: 'Natural',                     // ✅ ЖАҢЫ
+  floatBadge1Sub: '100% pure',                     // ✅ ЖАҢЫ
+  floatBadge2Title: 'Fast Growth',                 // ✅ ЖАҢЫ
+  floatBadge2Sub: '+40% weekly',                   // ✅ ЖАҢЫ
+  scroll: 'Scroll',                                // ✅ ЖАҢЫ
+},
 
   categories: {
     title: 'Product Categories',
