@@ -3,7 +3,7 @@ import { FiChevronDown, FiTrendingUp, FiDollarSign, FiTag, FiType, FiCheck } fro
 
 const SortDropdown = ({ value, onChange }) => {
   const [open, setOpen] = useState(false);
-  const [hoveredIndex, setHoveredIndex] = useState(null);
+  const [, setHoveredIndex] = useState(null);
   const dropdownRef = useRef(null);
 
   const options = [
@@ -68,15 +68,18 @@ const SortDropdown = ({ value, onChange }) => {
           box-shadow: 0 2px 8px -2px rgba(16, 185, 129, .1);
           outline: none;
         }
+
         .sort-trigger:hover {
           border-color: #10B981;
           transform: translateY(-2px);
           box-shadow: 0 8px 20px -8px rgba(16, 185, 129, .35);
         }
+
         .sort-trigger.open {
           border-color: #10B981;
           box-shadow: 0 0 0 4px rgba(16, 185, 129, .15), 0 8px 20px -8px rgba(16, 185, 129, .35);
         }
+
         .sort-trigger:active {
           transform: scale(.98);
         }
@@ -92,6 +95,7 @@ const SortDropdown = ({ value, onChange }) => {
           flex-shrink: 0;
           transition: all .4s cubic-bezier(.34,1.56,.64,1);
         }
+
         .sort-trigger:hover .sort-trigger-icon {
           transform: scale(1.1) rotate(-8deg);
         }
@@ -103,6 +107,7 @@ const SortDropdown = ({ value, onChange }) => {
           transition: transform .35s cubic-bezier(.34,1.56,.64,1);
           flex-shrink: 0;
         }
+
         .sort-chevron.open {
           transform: rotate(180deg);
         }
@@ -113,6 +118,7 @@ const SortDropdown = ({ value, onChange }) => {
           60% { transform: translateY(2px) scale(1.01); }
           100% { opacity: 1; transform: translateY(0) scale(1); }
         }
+
         .sort-menu {
           position: absolute;
           top: calc(100% + 8px);
@@ -147,15 +153,18 @@ const SortDropdown = ({ value, onChange }) => {
           position: relative;
           overflow: hidden;
         }
+
         .sort-item:hover {
           background: rgba(16, 185, 129, .08);
           color: #065f46;
           transform: translateX(3px);
         }
+
         .sort-item.active {
           background: rgba(16, 185, 129, .12);
           color: #059669;
         }
+
         .sort-item::before {
           content: '';
           position: absolute;
@@ -165,6 +174,7 @@ const SortDropdown = ({ value, onChange }) => {
           transform: scaleY(0);
           transition: transform .3s cubic-bezier(.34,1.56,.64,1);
         }
+
         .sort-item.active::before {
           transform: scaleY(1);
         }
@@ -179,6 +189,7 @@ const SortDropdown = ({ value, onChange }) => {
           flex-shrink: 0;
           transition: all .35s cubic-bezier(.34,1.56,.64,1);
         }
+
         .sort-item:hover .sort-item-icon {
           transform: scale(1.12) rotate(-8deg);
         }
@@ -193,6 +204,7 @@ const SortDropdown = ({ value, onChange }) => {
           60% { transform: scale(1.3) rotate(10deg); }
           100% { transform: scale(1) rotate(0); opacity: 1; }
         }
+
         .sort-check {
           color: #10B981;
           animation: checkPop .35s cubic-bezier(.34,1.56,.64,1);
@@ -204,6 +216,7 @@ const SortDropdown = ({ value, onChange }) => {
           .sort-dropdown {
             min-width: 200px;
           }
+
           .sort-trigger {
             padding: 9px 12px;
             font-size: 13px;
