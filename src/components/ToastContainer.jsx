@@ -336,7 +336,6 @@ const ToastContainer = () => {
                 {toast.message}
               </span>
 
-              {/* Close button */}
               <button
                 onClick={() => removeToast?.(toast.id)}
                 className="toast-close"

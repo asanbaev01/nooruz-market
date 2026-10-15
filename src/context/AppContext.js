@@ -1,5 +1,19 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import { authApi, productApi, categoryApi, cartApi, orderApi, favoriteApi } from '../api';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+} from 'react';
+import {
+  authApi,
+  productApi,
+  categoryApi,
+  cartApi,
+  orderApi,
+  favoriteApi,
+} from '../api';
 
 const AppContext = createContext();
 export const useApp = () => useContext(AppContext);
@@ -36,15 +50,33 @@ const safeRemove = (key) => {
   } catch {}
 };
 
+/* ====== МААНИЛҮҮ: API жообун ар дайым массив кылып алуу ====== */
+const toArray = (data) => {
+  if (Array.isArray(data)) return data;
+  if (data && Array.isArray(data.products)) return data.products;
+  if (data && Array.isArray(data.items)) return data.items;
+  if (data && Array.isArray(data.categories)) return data.categories;
+  if (data && Array.isArray(data.data)) return data.data;
+  return [];
+};
+
 export const AppProvider = ({ children }) => {
-  /* ====== STATE (LocalStorage'дан баштапкы маанилерди алат) ====== */
+  /* ====== STATE ====== */
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [cart, setCart] = useState(() => safeGet(LS_KEYS.CART, []));
-  const [favorites, setFavorites] = useState(() => safeGet(LS_KEYS.FAVORITES, []));
+  const [cart, setCart] = useState(() => {
+    const c = safeGet(LS_KEYS.CART, []);
+    return Array.isArray(c) ? c : [];
+  });
+  const [favorites, setFavorites] = useState(() => {
+    const f = safeGet(LS_KEYS.FAVORITES, []);
+    return Array.isArray(f) ? f : [];
+  });
   const [orders, setOrders] = useState([]);
   const [currentUser, setCurrentUser] = useState(() => safeGet(LS_KEYS.USER, null));
-  const [isLoggedIn, setIsLoggedIn] = useState(() => !!localStorage.getItem(LS_KEYS.TOKEN));
+  const [isLoggedIn, setIsLoggedIn] = useState(
+    () => !!localStorage.getItem(LS_KEYS.TOKEN)
+  );
   const [toasts, setToasts] = useState([]);
   const [loading, setLoading] = useState({
     products: false,
@@ -54,7 +86,6 @@ export const AppProvider = ({ children }) => {
     orders: false,
   });
 
-  /* ====== LOCALSTORAGE SYNC ====== */
   useEffect(() => {
     safeSet(LS_KEYS.CART, cart);
   }, [cart]);
@@ -71,83 +102,89 @@ export const AppProvider = ({ children }) => {
     }
   }, [currentUser]);
 
-  /* ====== TOASTS ====== */
-  const showToast = useCallback((message, type = 'success', duration = 3500) => {
-    const id = Date.now() + Math.random();
-    setToasts((prev) => [...prev, { id, message, type, duration }]);
-    setTimeout(() => {
-      setToasts((prev) => prev.map((t) => (t.id === id ? { ...t, leaving: true } : t)));
-      setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 400);
-    }, duration);
-  }, []);
+  const showToast = useCallback(
+    (message, type = 'success', duration = 3500) => {
+      if (!message) return;
+      const id = Date.now() + Math.random();
+      setToasts((prev) => [...prev, { id, message, type, duration }]);
+      setTimeout(() => {
+        setToasts((prev) =>
+          prev.map((t) => (t.id === id ? { ...t, leaving: true } : t))
+        );
+        setTimeout(
+          () => setToasts((prev) => prev.filter((t) => t.id !== id)),
+          400
+        );
+      }, duration);
+    },
+    []
+  );
 
   const removeToast = useCallback((id) => {
-    setToasts((prev) => prev.map((t) => (t.id === id ? { ...t, leaving: true } : t)));
-    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 400);
+    setToasts((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, leaving: true } : t))
+    );
+    setTimeout(
+      () => setToasts((prev) => prev.filter((t) => t.id !== id)),
+      400
+    );
   }, []);
 
-  /* ====== INITIAL LOAD ====== */
-  useEffect(() => {
-    const token = localStorage.getItem(LS_KEYS.TOKEN);
-    if (token) {
-      loadUser();
-    }
-    loadProducts();
-    loadCategories();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  /* ====== AUTH ====== */
-  const loadUser = async () => {
+  const loadUser = useCallback(async () => {
     try {
       const res = await authApi.getMe();
-      if (res.success) {
+      if (res?.success) {
         setCurrentUser(res.data);
         setIsLoggedIn(true);
-        loadCart();
-        loadFavorites();
-        loadOrders();
       }
     } catch (err) {
       safeRemove(LS_KEYS.TOKEN);
       safeRemove(LS_KEYS.USER);
+      setCurrentUser(null);
+      setIsLoggedIn(false);
     }
-  };
+  }, []);
 
   const login = async (email, password) => {
     try {
       const res = await authApi.login({ email, password });
-      if (res.success) {
+      if (res?.success) {
         localStorage.setItem(LS_KEYS.TOKEN, res.data.token);
         safeSet(LS_KEYS.USER, res.data.user);
         setCurrentUser(res.data.user);
         setIsLoggedIn(true);
         showToast(`Кош келиңиз, ${res.data.user.name}!`, 'success');
+        // Кийинки жүктөөлөр (await эмес, фондо)
         loadCart();
         loadFavorites();
         loadOrders();
         return { success: true };
       }
+      return { success: false, error: 'Кирүү ийгиликсиз' };
     } catch (err) {
-      showToast(err.message, 'error');
-      return { success: false, error: err.message };
+      showToast(err.message || 'Кирүү катасы', 'error');
+      return { success: false, error: err.message || 'Кирүү катасы' };
     }
   };
 
   const register = async (name, email, password, role = 'buyer') => {
     try {
       const res = await authApi.register({ name, email, password, role });
-      if (res.success) {
+      if (res?.success) {
         localStorage.setItem(LS_KEYS.TOKEN, res.data.token);
         safeSet(LS_KEYS.USER, res.data.user);
         setCurrentUser(res.data.user);
         setIsLoggedIn(true);
-        showToast(`Каттоо ийгиликтүү! Кош келиңиз, ${res.data.user.name}!`, 'success');
+        showToast(
+          `Каттоо ийгиликтүү! Кош келиңиз, ${res.data.user.name}!`,
+          'success'
+        );
         return { success: true };
       }
+      return { success: false, error: 'Каттоо ийгиликсиз' };
     } catch (err) {
-      showToast(err.message, 'error');
-      return { success: false, error: err.message };
+      showToast(err.message || 'Каттоо катасы', 'error');
+      return { success: false, error: err.message || 'Каттоо катасы' };
     }
   };
 
@@ -166,151 +203,192 @@ export const AppProvider = ({ children }) => {
   }, [showToast]);
 
   /* ====== PRODUCTS ====== */
-  const loadProducts = async (params = {}) => {
-    setLoading((prev) => ({ ...prev, products: true }));
-    try {
-      const res = await productApi.getAll(params);
-      if (res.success) setProducts(res.data);
-      return res;
-    } catch (err) {
-      showToast(err.message, 'error');
-    } finally {
-      setLoading((prev) => ({ ...prev, products: false }));
-    }
-  };
+  const loadProducts = useCallback(
+    async (params = {}) => {
+      setLoading((prev) => ({ ...prev, products: true }));
+      try {
+        const res = await productApi.getAll(params);
+        // ✅ API ар кандай форматта кайтарышы мүмкүн — массивке айландырабыз
+        if (res?.success) {
+          const list = toArray(res.data);
+          setProducts(list);
+        } else {
+          setProducts([]);
+        }
+        return res;
+      } catch (err) {
+        console.error('Products load error:', err);
+        showToast(err.message || 'Товарлар жүктөлбөдү', 'error');
+        setProducts([]);
+      } finally {
+        setLoading((prev) => ({ ...prev, products: false }));
+      }
+    },
+    [showToast]
+  );
 
   /* ====== CATEGORIES ====== */
-  const loadCategories = async () => {
+  const loadCategories = useCallback(async () => {
     setLoading((prev) => ({ ...prev, categories: true }));
     try {
       const res = await categoryApi.getAll();
-      if (res.success) setCategories(res.data);
+      if (res?.success) {
+        const list = toArray(res.data);
+        setCategories(list);
+      } else {
+        setCategories([]);
+      }
     } catch (err) {
       console.error('Categories load error:', err);
+      setCategories([]);
     } finally {
       setLoading((prev) => ({ ...prev, categories: false }));
     }
-  };
+  }, []);
 
-  /* ====== CART (LocalStorage менен) ====== */
-  const loadCart = async () => {
+  /* ====== INITIAL LOAD ====== */
+  useEffect(() => {
+    const token = localStorage.getItem(LS_KEYS.TOKEN);
+    if (token) {
+      loadUser();
+    }
+    loadProducts();
+    loadCategories();
+  }, [loadUser, loadProducts, loadCategories]);
+
+  /* ====== CART ====== */
+  const loadCart = useCallback(async () => {
     if (!localStorage.getItem(LS_KEYS.TOKEN)) return;
     setLoading((prev) => ({ ...prev, cart: true }));
     try {
       const res = await cartApi.get();
-      if (res.success && res.data?.items?.length > 0) {
-        setCart(res.data.items);
+      if (res?.success) {
+        const items = toArray(res.data?.items || res.data);
+        if (items.length > 0) setCart(items);
       }
-      // Эгер серверде бош болсо — LocalStorage'дагы калат
     } catch (err) {
       console.error('Cart load error:', err);
     } finally {
       setLoading((prev) => ({ ...prev, cart: false }));
     }
-  };
+  }, []);
 
-  const addToCart = async (product, isWholesale = false) => {
-    const productId = product.id || product._id;
+  const addToCart = useCallback(
+    async (product, isWholesale = false) => {
+      if (!product) return;
+      const productId = product.id || product._id;
+      if (!productId) return;
 
-    // ✅ Ар дайым LocalStorage'га кошобуз (guest колдонуучу үчүн да)
-    setCart((prev) => {
-      const existingIndex = prev.findIndex(
-        (item) => (item.id || item._id) === productId && item.isWholesale === isWholesale
-      );
-
-      if (existingIndex >= 0) {
-        const updated = [...prev];
-        updated[existingIndex] = {
-          ...updated[existingIndex],
-          quantity: updated[existingIndex].quantity + 1,
-        };
-        return updated;
-      }
-
-      return [
-        ...prev,
-        {
-          id: productId,
-          _id: productId,
-          name: product.name,
-          price: product.price,
-          image: product.image,
-          quantity: 1,
-          isWholesale,
-        },
-      ];
-    });
-
-    showToast(`${product.name} себетке кошулду`, 'success');
-
-    // ✅ Эгер кирген болсо — серверге да жөнөтөбүз
-    if (isLoggedIn) {
-      try {
-        const res = await cartApi.add(productId, 1, isWholesale);
-        if (res.success && res.data?.items) {
-          setCart(res.data.items);
-        }
-      } catch (err) {
-        console.warn('Server cart sync failed:', err.message);
-      }
-    }
-  };
-
-  const removeFromCart = async (itemId, isWholesale) => {
-    // ✅ LocalStorage'дан өчүрүү
-    setCart((prev) =>
-      prev.filter((item) => {
-        const id = item.id || item._id;
-        if (isWholesale !== undefined) {
-          return !(id === itemId && item.isWholesale === isWholesale);
-        }
-        return id !== itemId;
-      })
-    );
-    showToast('Корзинадан өчүрүлдү', 'info');
-
-    // ✅ Серверден өчүрүү
-    if (isLoggedIn) {
-      try {
-        await cartApi.remove(itemId);
-      } catch (err) {
-        console.warn('Server remove failed:', err.message);
-      }
-    }
-  };
-
-  const changeQuantity = async (itemId, isWholesale, delta) => {
-    // ✅ LocalStorage'да өзгөртүү
-    setCart((prev) =>
-      prev
-        .map((item) => {
-          const id = item.id || item._id;
-          if (id === itemId && item.isWholesale === isWholesale) {
-            const newQty = item.quantity + delta;
-            if (newQty < 1) return null;
-            return { ...item, quantity: newQty };
-          }
-          return item;
-        })
-        .filter(Boolean)
-    );
-
-    // ✅ Серверде өзгөртүү
-    if (isLoggedIn) {
-      try {
-        const item = cart.find(
-          (i) => (i.id || i._id) === itemId && i.isWholesale === isWholesale
+      // ✅ LocalStorage'га кошуу
+      setCart((prev) => {
+        const list = Array.isArray(prev) ? prev : [];
+        const existingIndex = list.findIndex(
+          (item) =>
+            (item.id || item._id) === productId &&
+            item.isWholesale === isWholesale
         );
-        if (item) {
-          await cartApi.update(itemId, item.quantity + delta);
-        }
-      } catch (err) {
-        console.warn('Server update failed:', err.message);
-      }
-    }
-  };
 
-  const clearCart = async () => {
+        if (existingIndex >= 0) {
+          const updated = [...list];
+          updated[existingIndex] = {
+            ...updated[existingIndex],
+            quantity: (updated[existingIndex].quantity || 1) + 1,
+          };
+          return updated;
+        }
+
+        return [
+          ...list,
+          {
+            id: productId,
+            _id: productId,
+            name: product.name,
+            price: product.price,
+            image: product.image,
+            quantity: 1,
+            isWholesale,
+          },
+        ];
+      });
+
+      showToast(`${product.name} себетке кошулду`, 'success');
+
+      // ✅ Эгер кирген болсо — серверге синхрондойбуз
+      if (isLoggedIn) {
+        try {
+          const res = await cartApi.add(productId, 1, isWholesale);
+          if (res?.success && res.data?.items) {
+            setCart(toArray(res.data.items));
+          }
+        } catch (err) {
+          console.warn('Server cart sync failed:', err.message);
+        }
+      }
+    },
+    [isLoggedIn, showToast]
+  );
+
+  const removeFromCart = useCallback(
+    async (itemId, isWholesale) => {
+      setCart((prev) => {
+        const list = Array.isArray(prev) ? prev : [];
+        return list.filter((item) => {
+          const id = item.id || item._id;
+          if (isWholesale !== undefined) {
+            return !(id === itemId && item.isWholesale === isWholesale);
+          }
+          return id !== itemId;
+        });
+      });
+      showToast('Корзинадан өчүрүлдү', 'info');
+
+      if (isLoggedIn) {
+        try {
+          await cartApi.remove(itemId);
+        } catch (err) {
+          console.warn('Server remove failed:', err.message);
+        }
+      }
+    },
+    [isLoggedIn, showToast]
+  );
+
+  const changeQuantity = useCallback(
+    async (itemId, isWholesale, delta) => {
+      setCart((prev) => {
+        const list = Array.isArray(prev) ? prev : [];
+        return list
+          .map((item) => {
+            const id = item.id || item._id;
+            if (id === itemId && item.isWholesale === isWholesale) {
+              const newQty = (item.quantity || 1) + delta;
+              if (newQty < 1) return null;
+              return { ...item, quantity: newQty };
+            }
+            return item;
+          })
+          .filter(Boolean);
+      });
+
+      if (isLoggedIn) {
+        try {
+          const item = (cart || []).find(
+            (i) =>
+              (i.id || i._id) === itemId &&
+              i.isWholesale === isWholesale
+          );
+          if (item) {
+            await cartApi.update(itemId, (item.quantity || 1) + delta);
+          }
+        } catch (err) {
+          console.warn('Server update failed:', err.message);
+        }
+      }
+    },
+    [isLoggedIn, cart]
+  );
+
+  const clearCart = useCallback(async () => {
     setCart([]);
     safeRemove(LS_KEYS.CART);
     showToast('Корзина тазаланды', 'info');
@@ -322,90 +400,108 @@ export const AppProvider = ({ children }) => {
         console.warn('Server clear failed:', err.message);
       }
     }
-  };
+  }, [isLoggedIn, showToast]);
 
-  /* ====== FAVORITES (LocalStorage менен) ====== */
-  const loadFavorites = async () => {
+  /* ====== FAVORITES ====== */
+  const loadFavorites = useCallback(async () => {
     if (!localStorage.getItem(LS_KEYS.TOKEN)) return;
     setLoading((prev) => ({ ...prev, favorites: true }));
     try {
       const res = await favoriteApi.getAll();
-      if (res.success && res.data?.length > 0) {
-        setFavorites(res.data);
+      if (res?.success) {
+        const list = toArray(res.data);
+        if (list.length > 0) setFavorites(list);
       }
     } catch (err) {
       console.error('Favorites load error:', err);
     } finally {
       setLoading((prev) => ({ ...prev, favorites: false }));
     }
-  };
+  }, []);
 
-  const toggleFavorite = async (product) => {
-    const productId = product.id || product._id;
+  const toggleFavorite = useCallback(
+    async (product) => {
+      if (!product) return;
+      const productId = product.id || product._id;
+      if (!productId) return;
 
-    // ✅ LocalStorage'да toggle
-    setFavorites((prev) => {
-      const exists = prev.some((f) => (f._id || f.id) === productId);
-      if (exists) {
-        showToast('Тандалмалардан алынды', 'info');
-        return prev.filter((f) => (f._id || f.id) !== productId);
-      } else {
+      setFavorites((prev) => {
+        const list = Array.isArray(prev) ? prev : [];
+        const exists = list.some((f) => (f._id || f.id) === productId);
+        if (exists) {
+          showToast('Тандалмалардан алынды', 'info');
+          return list.filter((f) => (f._id || f.id) !== productId);
+        }
         showToast('Тандалмаларга кошулду', 'success');
-        return [...prev, product];
+        return [...list, product];
+      });
+
+      if (isLoggedIn) {
+        try {
+          await favoriteApi.toggle(productId);
+        } catch (err) {
+          console.warn('Server favorite toggle failed:', err.message);
+        }
       }
-    });
+    },
+    [isLoggedIn, showToast]
+  );
 
-    // ✅ Серверде toggle
-    if (isLoggedIn) {
-      try {
-        await favoriteApi.toggle(productId);
-      } catch (err) {
-        console.warn('Server favorite toggle failed:', err.message);
-      }
-    }
-  };
+  const isFavorite = useCallback(
+    (productId) =>
+      (favorites || []).some((f) => (f._id || f.id) === productId),
+    [favorites]
+  );
 
-  const isFavorite = (productId) =>
-    favorites.some((f) => (f._id || f.id) === productId);
-
-  /* ====== ORDERS (LocalStorage'га сакталат OrderContext'те) ====== */
-  const loadOrders = async () => {
+  /* ====== ORDERS ====== */
+  const loadOrders = useCallback(async () => {
     if (!localStorage.getItem(LS_KEYS.TOKEN)) return;
     setLoading((prev) => ({ ...prev, orders: true }));
     try {
       const res = await orderApi.getMy({ limit: 50 });
-      if (res.success) setOrders(res.data);
+      if (res?.success) {
+        setOrders(toArray(res.data));
+      }
     } catch (err) {
       console.error('Orders load error:', err);
     } finally {
       setLoading((prev) => ({ ...prev, orders: false }));
     }
-  };
+  }, []);
 
-  const createOrder = async (orderData) => {
-    try {
-      const res = await orderApi.create(orderData);
-      if (res.success) {
-        setCart([]);
-        safeRemove(LS_KEYS.CART);
-        await loadOrders();
-        showToast('Буйрутма ийгиликтүү кабыл алынды!', 'success');
-        return { success: true, order: res.data };
+  const createOrder = useCallback(
+    async (orderData) => {
+      try {
+        const res = await orderApi.create(orderData);
+        if (res?.success) {
+          setCart([]);
+          safeRemove(LS_KEYS.CART);
+          await loadOrders();
+          showToast('Буйрутма ийгиликтүү кабыл алынды!', 'success');
+          return { success: true, order: res.data };
+        }
+        return { success: false, error: 'Буйрутма ийгиликсиз' };
+      } catch (err) {
+        showToast(err.message || 'Буйрутма катасы', 'error');
+        return { success: false, error: err.message || 'Буйрутма катасы' };
       }
-    } catch (err) {
-      showToast(err.message, 'error');
-      return { success: false, error: err.message };
-    }
-  };
+    },
+    [loadOrders, showToast]
+  );
 
   /* ====== COMPUTED ====== */
   const cartCount = useMemo(
-    () => cart.reduce((sum, item) => sum + item.quantity, 0),
+    () =>
+      (cart || []).reduce((sum, item) => sum + (item.quantity || 0), 0),
     [cart]
   );
 
   const cartTotal = useMemo(
-    () => cart.reduce((sum, item) => sum + item.price * item.quantity, 0),
+    () =>
+      (cart || []).reduce(
+        (sum, item) => sum + (item.price || 0) * (item.quantity || 0),
+        0
+      ),
     [cart]
   );
 
